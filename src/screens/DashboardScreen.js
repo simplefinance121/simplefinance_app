@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext'
 import API from '../config'
 import { colors } from '../theme'
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 7
 const CHART_HEIGHT = 220
 const CHART_PADDING = { top: 20, right: 16, bottom: 30, left: 55 }
 
@@ -284,30 +284,34 @@ export default function DashboardScreen() {
         </View>
 
         {/* Referral Bonus Interest */}
-        {referralBonusRecords.length > 0 && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>推薦獎勵利息</Text>
-            <View style={styles.tableHeader}>
-              <Text style={[styles.tableHeaderText, { flex: 1 }]}>日期</Text>
-              <Text style={[styles.tableHeaderText, { flex: 1 }]}>來源</Text>
-              <Text style={[styles.tableHeaderText, { flex: 1, textAlign: 'right' }]}>獎勵 ({currency})</Text>
-            </View>
-            {referralBonusRecords.slice((refBonusPage - 1) * PAGE_SIZE, refBonusPage * PAGE_SIZE).map((rec) => (
-              <View key={rec._id} style={styles.tableRow}>
-                <Text style={[styles.tableCell, { flex: 1 }]}>
-                  {new Date(rec.date).toLocaleDateString('zh-TW')}
-                </Text>
-                <Text style={[styles.tableCell, { flex: 1 }]}>{rec.fromUserName || '推薦用戶'}</Text>
-                <Text style={[styles.tableCell, { flex: 1, textAlign: 'right' }, styles.referralText]}>
-                  +{fmt(rec.amount)}
-                </Text>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>推薦獎勵利息</Text>
+          {referralBonusRecords.length > 0 ? (
+            <>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderText, { flex: 1 }]}>日期</Text>
+                <Text style={[styles.tableHeaderText, { flex: 1 }]}>來源</Text>
+                <Text style={[styles.tableHeaderText, { flex: 1, textAlign: 'right' }]}>獎勵 ({currency})</Text>
               </View>
-            ))}
-            {referralBonusRecords.length > PAGE_SIZE && (
-              <Pagination current={refBonusPage} total={Math.ceil(referralBonusRecords.length / PAGE_SIZE)} onChange={setRefBonusPage} />
-            )}
-          </View>
-        )}
+              {referralBonusRecords.slice((refBonusPage - 1) * PAGE_SIZE, refBonusPage * PAGE_SIZE).map((rec) => (
+                <View key={rec._id} style={styles.tableRow}>
+                  <Text style={[styles.tableCell, { flex: 1 }]}>
+                    {new Date(rec.date).toLocaleDateString('zh-TW')}
+                  </Text>
+                  <Text style={[styles.tableCell, { flex: 1 }]}>{rec.fromUserName || '推薦用戶'}</Text>
+                  <Text style={[styles.tableCell, { flex: 1, textAlign: 'right' }, styles.referralText]}>
+                    +{fmt(rec.amount)}
+                  </Text>
+                </View>
+              ))}
+              {referralBonusRecords.length > PAGE_SIZE && (
+                <Pagination current={refBonusPage} total={Math.ceil(referralBonusRecords.length / PAGE_SIZE)} onChange={setRefBonusPage} />
+              )}
+            </>
+          ) : (
+            <Text style={styles.emptyText}>目前尚無推薦獎勵</Text>
+          )}
+        </View>
 
         {/* Referral Code */}
         {user.referralCode && (
