@@ -6,7 +6,7 @@ import API from '../config'
 import { colors } from '../theme'
 
 export default function SignupScreen() {
-  const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '', referralCode: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigation = useNavigation()
@@ -36,7 +36,12 @@ export default function SignupScreen() {
       const res = await fetch(`${API}/api/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: form.name, email: form.email, password: form.password }),
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          password: form.password,
+          ...(form.referralCode.trim() ? { referralCode: form.referralCode.trim() } : {}),
+        }),
       })
       const data = await res.json()
 
@@ -107,6 +112,18 @@ export default function SignupScreen() {
             placeholder="請再次輸入密碼"
             placeholderTextColor={colors.textMuted}
             secureTextEntry
+          />
+        </View>
+
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>推薦碼（選填）</Text>
+          <TextInput
+            style={styles.input}
+            value={form.referralCode}
+            onChangeText={(text) => setForm({ ...form, referralCode: text })}
+            placeholder="請輸入推薦碼"
+            placeholderTextColor={colors.textMuted}
+            autoCapitalize="characters"
           />
         </View>
 

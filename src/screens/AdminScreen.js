@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ScrollView, View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, StyleSheet } from 'react-native'
 import { useNavigation } from '@react-navigation/native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Toast from 'react-native-toast-message'
 import { useAuth } from '../context/AuthContext'
 import API from '../config'
@@ -25,13 +26,17 @@ export default function AdminScreen() {
   const [saving, setSaving] = useState(false)
   const [expandedId, setExpandedId] = useState(null)
   const [transactions, setTransactions] = useState({})
+  const [interestRecords, setInterestRecords] = useState({})
+  const [referralBonusRecords, setReferralBonusRecords] = useState({})
   const [txForm, setTxForm] = useState({ type: 'deposit', amount: '', date: '' })
   const [txSaving, setTxSaving] = useState(false)
   const [deleting, setDeleting] = useState(null)
   const [currencySaving, setCurrencySaving] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [txPage, setTxPage] = useState({})
+  const [txFilter, setTxFilter] = useState({})
   const navigation = useNavigation()
+  const insets = useSafeAreaInsets()
 
   useEffect(() => {
     if (!authUser || authUser.email !== ADMIN_EMAIL) {
@@ -70,12 +75,38 @@ export default function AdminScreen() {
     } catch { /* ignore */ }
   }
 
+  const fetchInterest = async (userId) => {
+    try {
+      const res = await fetch(`${API}/api/admin/users/${userId}/interest`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setInterestRecords((prev) => ({ ...prev, [userId]: data }))
+      }
+    } catch { /* ignore */ }
+  }
+
+  const fetchReferralBonus = async (userId) => {
+    try {
+      const res = await fetch(`${API}/api/admin/users/${userId}/referral-bonus`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setReferralBonusRecords((prev) => ({ ...prev, [userId]: data }))
+      }
+    } catch { /* ignore */ }
+  }
+
   const toggleExpand = (userId) => {
     if (expandedId === userId) {
       setExpandedId(null)
     } else {
       setExpandedId(userId)
       fetchTransactions(userId)
+      fetchInterest(userId)
+      fetchReferralBonus(userId)
       setTxPage((prev) => ({ ...prev, [userId]: 1 }))
     }
     setTxForm({ type: 'deposit', amount: '', date: '' })
@@ -213,7 +244,7 @@ export default function AdminScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
         <Text style={styles.headerTitle}>管理後台</Text>
         <Text style={styles.headerSubtitle}>管理所有用戶的資產數據</Text>
       </View>
@@ -234,6 +265,12 @@ export default function AdminScreen() {
             <View style={styles.userInfo}>
               <Text style={styles.userName}>{u.name}</Text>
               <Text style={styles.userEmail}>{u.email}</Text>
+              {u.referralCode && (
+                <Text style={styles.userReferral}>推薦碼：{u.referralCode}</Text>
+              )}
+              {u.referredBy && (
+                <Text style={styles.userReferral}>推薦人：{u.referredBy}</Text>
+              )}
               <View style={styles.userAssetRow}>
                 <Text style={styles.userAssetLabel}>資產：</Text>
                 {editingId === u._id ? (
@@ -337,8 +374,89 @@ export default function AdminScreen() {
                 </View>
 
                 <Text style={styles.expandedTitle}>交易紀錄</Text>
-                {transactions[u._id]?.length > 0 ? (() => {
-                  const allTx = transactions[u._id]
+                <View style={styles.txFilterRow}>
+                  {[
+                    { key: 'interest', label: '利息' },
+                    { key: 'deposit', label: '入金' },
+                    { key: 'withdrawal', label: '出金' },
+                    { key: 'referral_bonus', label: '推薦獎勵' },
+                  ].map((f) => (
+                    <TouchableOpacity
+                      key={f.key}
+                      style={[styles.txFilterBtn, (txFilter[u._id] || 'interest') === f.key && styles.txFilterBtnActive]}
+                      onPress={() => {
+                        setTxFilter((prev) => ({ ...prev, [u._id]: f.key }))
+                        setTxPage((prev) => ({ ...prev, [u._id]: 1 }))
+                      }}
+                    >
+                      <Text style={[styles.txFilterBtnText, (txFilter[u._id] || 'interest') === f.key && styles.txFilterBtnTextActive]}>
+                        {f.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                {(() => {
+                  const filter = txFilter[u._id] || 'interest'
+                  if (filter === 'referral_bonus') {
+                    const records = referralBonusRecords[u._id] || []
+                    if (records.length === 0) return <Text style={styles.emptyText}>尚無推薦獎勵紀錄</Text>
+                    const page = txPage[u._id] || 1
+                    const totalPages = Math.ceil(records.length / TX_PAGE_SIZE)
+                    const pageRecords = records.slice((page - 1) * TX_PAGE_SIZE, page * TX_PAGE_SIZE)
+                    return (
+                      <>
+                        {pageRecords.map((rec) => (
+                          <View key={rec._id} style={styles.txRow}>
+                            <Text style={styles.txDate}>{new Date(rec.date).toLocaleDateString('zh-TW')}</Text>
+                            <Text style={[styles.txType, styles.referralText]}>{rec.fromUserName || '推薦用戶'}</Text>
+                            <Text style={styles.txAmount}>+{fmtAmount(rec.amount)}</Text>
+                          </View>
+                        ))}
+                        {totalPages > 1 && (
+                          <View style={styles.paginationRow}>
+                            <TouchableOpacity disabled={page <= 1} onPress={() => setTxPage((prev) => ({ ...prev, [u._id]: page - 1 }))}>
+                              <Text style={[styles.pageBtn, page <= 1 && { color: colors.textMuted }]}>‹</Text>
+                            </TouchableOpacity>
+                            <Text style={styles.pageInfo}>{page} / {totalPages}</Text>
+                            <TouchableOpacity disabled={page >= totalPages} onPress={() => setTxPage((prev) => ({ ...prev, [u._id]: page + 1 }))}>
+                              <Text style={[styles.pageBtn, page >= totalPages && { color: colors.textMuted }]}>›</Text>
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                      </>
+                    )
+                  }
+                  if (filter === 'interest') {
+                    const records = interestRecords[u._id] || []
+                    if (records.length === 0) return <Text style={styles.emptyText}>尚無利息紀錄</Text>
+                    const page = txPage[u._id] || 1
+                    const totalPages = Math.ceil(records.length / TX_PAGE_SIZE)
+                    const pageRecords = records.slice((page - 1) * TX_PAGE_SIZE, page * TX_PAGE_SIZE)
+                    return (
+                      <>
+                        {pageRecords.map((rec) => (
+                          <View key={rec._id} style={styles.txRow}>
+                            <Text style={styles.txDate}>{new Date(rec.date).toLocaleDateString('zh-TW')}</Text>
+                            <Text style={[styles.txType, styles.interestText]}>利息</Text>
+                            <Text style={styles.txAmount}>+{fmtAmount(rec.amount)}</Text>
+                          </View>
+                        ))}
+                        {totalPages > 1 && (
+                          <View style={styles.paginationRow}>
+                            <TouchableOpacity disabled={page <= 1} onPress={() => setTxPage((prev) => ({ ...prev, [u._id]: page - 1 }))}>
+                              <Text style={[styles.pageBtn, page <= 1 && { color: colors.textMuted }]}>‹</Text>
+                            </TouchableOpacity>
+                            <Text style={styles.pageInfo}>{page} / {totalPages}</Text>
+                            <TouchableOpacity disabled={page >= totalPages} onPress={() => setTxPage((prev) => ({ ...prev, [u._id]: page + 1 }))}>
+                              <Text style={[styles.pageBtn, page >= totalPages && { color: colors.textMuted }]}>›</Text>
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                      </>
+                    )
+                  }
+                  const allTx = (transactions[u._id] || []).filter((tx) => tx.type === filter)
+                  if (allTx.length === 0) return <Text style={styles.emptyText}>尚無交易紀錄</Text>
                   const page = txPage[u._id] || 1
                   const totalPages = Math.ceil(allTx.length / TX_PAGE_SIZE)
                   const pageTx = allTx.slice((page - 1) * TX_PAGE_SIZE, page * TX_PAGE_SIZE)
@@ -362,26 +480,18 @@ export default function AdminScreen() {
                       ))}
                       {totalPages > 1 && (
                         <View style={styles.paginationRow}>
-                          <TouchableOpacity
-                            disabled={page <= 1}
-                            onPress={() => setTxPage((prev) => ({ ...prev, [u._id]: page - 1 }))}
-                          >
+                          <TouchableOpacity disabled={page <= 1} onPress={() => setTxPage((prev) => ({ ...prev, [u._id]: page - 1 }))}>
                             <Text style={[styles.pageBtn, page <= 1 && { color: colors.textMuted }]}>‹</Text>
                           </TouchableOpacity>
                           <Text style={styles.pageInfo}>{page} / {totalPages}</Text>
-                          <TouchableOpacity
-                            disabled={page >= totalPages}
-                            onPress={() => setTxPage((prev) => ({ ...prev, [u._id]: page + 1 }))}
-                          >
+                          <TouchableOpacity disabled={page >= totalPages} onPress={() => setTxPage((prev) => ({ ...prev, [u._id]: page + 1 }))}>
                             <Text style={[styles.pageBtn, page >= totalPages && { color: colors.textMuted }]}>›</Text>
                           </TouchableOpacity>
                         </View>
                       )}
                     </>
                   )
-                })() : (
-                  <Text style={styles.emptyText}>尚無交易紀錄</Text>
-                )}
+                })()}
               </View>
             )}
           </View>
@@ -445,6 +555,7 @@ const styles = StyleSheet.create({
   userInfo: { marginBottom: 8 },
   userName: { fontSize: 16, fontWeight: '700', color: colors.text },
   userEmail: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
+  userReferral: { fontSize: 12, color: '#f59e0b', marginTop: 2 },
   userAssetRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
   userAssetLabel: { fontSize: 14, color: colors.textSecondary },
   userAssetValue: { fontSize: 16, fontWeight: '700', color: colors.primary },
@@ -526,6 +637,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.text,
   },
+  txFilterRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  txFilterBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: colors.backgroundGray,
+  },
+  txFilterBtnActive: { backgroundColor: colors.primary },
+  txFilterBtnText: { fontSize: 13, color: colors.textSecondary },
+  txFilterBtnTextActive: { color: colors.white },
   txRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -538,6 +659,8 @@ const styles = StyleSheet.create({
   txType: { fontSize: 13, width: 40 },
   depositText: { color: colors.deposit },
   withdrawalText: { color: colors.withdrawal },
+  interestText: { color: colors.interest },
+  referralText: { color: '#f59e0b' },
   txAmount: { fontSize: 13, color: colors.text, width: 80 },
   deleteBtn: {
     backgroundColor: '#fee2e2',

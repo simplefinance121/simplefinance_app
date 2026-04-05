@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
-import { ScrollView, View, Text, TouchableOpacity, Dimensions, ActivityIndicator, PanResponder, StyleSheet } from 'react-native'
+import { ScrollView, View, Text, TouchableOpacity, Dimensions, ActivityIndicator, PanResponder, StyleSheet, Share } from 'react-native'
 import { useNavigation } from '@react-navigation/native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path, Defs, LinearGradient, Stop, Line, Text as SvgText } from 'react-native-svg'
@@ -22,6 +22,8 @@ export default function DashboardScreen() {
   const [interestRecords, setInterestRecords] = useState([])
   const [txPage, setTxPage] = useState(1)
   const [intPage, setIntPage] = useState(1)
+  const [referralBonusRecords, setReferralBonusRecords] = useState([])
+  const [refBonusPage, setRefBonusPage] = useState(1)
   const [totalYears, setTotalYears] = useState(5)
   const [loading, setLoading] = useState(true)
   const [scrollEnabled, setScrollEnabled] = useState(true)
@@ -43,10 +45,11 @@ export default function DashboardScreen() {
   const fetchData = async () => {
     if (!token) return
     try {
-      const [meRes, txRes, intRes] = await Promise.all([
+      const [meRes, txRes, intRes, refBonusRes] = await Promise.all([
         fetch(`${API}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API}/api/auth/me/transactions`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API}/api/auth/me/interest`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API}/api/auth/me/referral-bonus`, { headers: { Authorization: `Bearer ${token}` } }),
       ])
 
       if (!mountedRef.current) return
@@ -65,6 +68,10 @@ export default function DashboardScreen() {
       if (intRes.ok && mountedRef.current) {
         const intData = await intRes.json()
         if (Array.isArray(intData)) setInterestRecords(intData)
+      }
+      if (refBonusRes.ok && mountedRef.current) {
+        const refData = await refBonusRes.json()
+        if (Array.isArray(refData)) setReferralBonusRecords(refData)
       }
     } catch {
       // ignore
@@ -275,6 +282,47 @@ export default function DashboardScreen() {
             <Text style={styles.emptyText}>尚無利息紀錄</Text>
           )}
         </View>
+
+        {/* Referral Bonus Interest */}
+        {referralBonusRecords.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>推薦獎勵利息</Text>
+            <View style={styles.tableHeader}>
+              <Text style={[styles.tableHeaderText, { flex: 1 }]}>日期</Text>
+              <Text style={[styles.tableHeaderText, { flex: 1 }]}>來源</Text>
+              <Text style={[styles.tableHeaderText, { flex: 1, textAlign: 'right' }]}>獎勵 ({currency})</Text>
+            </View>
+            {referralBonusRecords.slice((refBonusPage - 1) * PAGE_SIZE, refBonusPage * PAGE_SIZE).map((rec) => (
+              <View key={rec._id} style={styles.tableRow}>
+                <Text style={[styles.tableCell, { flex: 1 }]}>
+                  {new Date(rec.date).toLocaleDateString('zh-TW')}
+                </Text>
+                <Text style={[styles.tableCell, { flex: 1 }]}>{rec.fromUserName || '推薦用戶'}</Text>
+                <Text style={[styles.tableCell, { flex: 1, textAlign: 'right' }, styles.referralText]}>
+                  +{fmt(rec.amount)}
+                </Text>
+              </View>
+            ))}
+            {referralBonusRecords.length > PAGE_SIZE && (
+              <Pagination current={refBonusPage} total={Math.ceil(referralBonusRecords.length / PAGE_SIZE)} onChange={setRefBonusPage} />
+            )}
+          </View>
+        )}
+
+        {/* Referral Code */}
+        {user.referralCode && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>我的推薦碼</Text>
+            <Text style={styles.referralCodeText}>{user.referralCode}</Text>
+            <Text style={styles.referralHint}>分享您的推薦碼，當好友註冊並儲蓄時，您將獲得其利息 10% 的額外獎勵。</Text>
+            <TouchableOpacity
+              style={styles.shareBtn}
+              onPress={() => Share.share({ message: `使用我的推薦碼 ${user.referralCode} 加入 Simple Finance！` })}
+            >
+              <Text style={styles.shareBtnText}>分享推薦碼</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Logout */}
         <TouchableOpacity style={styles.logoutBtn} onPress={() => logout()}>
@@ -645,6 +693,33 @@ const styles = StyleSheet.create({
   depositText: { color: colors.deposit },
   withdrawalText: { color: colors.withdrawal },
   interestText: { color: colors.interest },
+  referralText: { color: '#f59e0b' },
+  referralCodeText: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: colors.primary,
+    textAlign: 'center',
+    letterSpacing: 3,
+    marginBottom: 8,
+    paddingVertical: 12,
+    backgroundColor: colors.backgroundGray,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  referralHint: {
+    fontSize: 13,
+    color: colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  shareBtn: {
+    backgroundColor: colors.primary,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  shareBtnText: { color: colors.white, fontSize: 15, fontWeight: '600' },
   emptyText: { fontSize: 14, color: colors.textMuted, textAlign: 'center', paddingVertical: 20 },
   logoutBtn: {
     borderWidth: 1.5,
