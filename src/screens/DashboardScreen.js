@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
-import { ScrollView, View, Text, TouchableOpacity, Dimensions, ActivityIndicator, PanResponder, StyleSheet, Share } from 'react-native'
+import { ScrollView, View, Text, TouchableOpacity, Dimensions, ActivityIndicator, PanResponder, StyleSheet } from 'react-native'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path, Defs, LinearGradient, Stop, Line, Text as SvgText } from 'react-native-svg'
@@ -338,21 +338,6 @@ export default function DashboardScreen() {
             <Text style={styles.emptyText}>目前尚無推薦獎勵</Text>
           )}
         </View>
-
-        {/* Referral Code */}
-        {user.referralCode && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>我的推薦碼</Text>
-            <Text style={styles.referralCodeText}>{user.referralCode}</Text>
-            <Text style={styles.referralHint}>分享您的推薦碼，當好友註冊並儲蓄時，您將獲得其利息 10% 的額外獎勵。</Text>
-            <TouchableOpacity
-              style={styles.shareBtn}
-              onPress={() => Share.share({ message: `使用我的推薦碼 ${user.referralCode} 加入 Simple Finance！` })}
-            >
-              <Text style={styles.shareBtnText}>分享推薦碼</Text>
-            </TouchableOpacity>
-          </View>
-        )}
 
         {/* Logout (hidden in admin view) */}
         {!isAdminView && (
@@ -735,32 +720,6 @@ const styles = StyleSheet.create({
   withdrawalText: { color: colors.withdrawal },
   interestText: { color: colors.interest },
   referralText: { color: '#f59e0b' },
-  referralCodeText: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: colors.primary,
-    textAlign: 'center',
-    letterSpacing: 3,
-    marginBottom: 8,
-    paddingVertical: 12,
-    backgroundColor: colors.backgroundGray,
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  referralHint: {
-    fontSize: 13,
-    color: colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: 12,
-  },
-  shareBtn: {
-    backgroundColor: colors.primary,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  shareBtnText: { color: colors.white, fontSize: 15, fontWeight: '600' },
   emptyText: { fontSize: 14, color: colors.textMuted, textAlign: 'center', paddingVertical: 20 },
   logoutBtn: {
     borderWidth: 1.5,

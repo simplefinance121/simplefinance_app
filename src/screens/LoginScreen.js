@@ -222,20 +222,6 @@ export default function LoginScreen() {
                 <Text style={styles.btnPrimaryText}>登入</Text>
               )}
             </TouchableOpacity>
-
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>或</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            <TouchableOpacity
-              style={styles.btnOutline}
-              onPress={() => navigation.navigate('Signup')}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.btnOutlineText}>建立新帳戶</Text>
-            </TouchableOpacity>
           </View>
 
           {/* Footer */}
