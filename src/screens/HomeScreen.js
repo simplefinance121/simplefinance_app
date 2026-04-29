@@ -4,10 +4,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { colors } from '../theme'
 
 const features = [
-  { icon: '📈', title: '專業量化策略', desc: '運用多元量化模型與套利策略，追求穩健的投資報酬，歷史年化報酬可達 7%' },
-  { icon: '🪪', title: '完全透明', desc: '透過專屬 App 隨時查看您的資產狀況與收益明細，所有數據即時更新' },
-  { icon: '🔒', title: '風險控管', desc: '透過量化交易、ETF 套利、套期保值、跨市場套利等多元策略分散風險' },
-  { icon: '💎', title: '靈活配置', desc: '彈性的資產配置方案，可依需求調整投資組合與資金運用' },
+  { icon: '📈', title: '專屬服務', desc: '為現有私人客戶提供量身打造的帳戶管理服務' },
+  { icon: '🪪', title: '完全透明', desc: '透過專屬 App 隨時查看您的帳戶狀況與明細，所有數據即時更新' },
+  { icon: '🔒', title: '資料安全', desc: '採用業界標準加密與身份驗證機制，保障您的帳戶資料安全' },
+  { icon: '💎', title: '專人諮詢', desc: '客戶有任何疑問皆可聯絡客服或您的專屬聯絡人協助處理' },
 ]
 
 const currencies = ['USDT', 'USD', 'USDC', 'TWD']
@@ -20,32 +20,32 @@ export default function HomeScreen() {
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 20 }}>
       {/* Hero */}
       <View style={[styles.hero, { paddingTop: insets.top + 40 }]}>
-        <Text style={styles.heroTag}>智能投資 · 量化策略 · 資產配置</Text>
-        <Text style={styles.heroTitle}>讓您的資產穩定增值</Text>
+        <Text style={styles.heroTag}>邀請制 · 私人客戶平台</Text>
+        <Text style={styles.heroTitle}>私人客戶資產管理平台</Text>
         <Text style={styles.heroSubtitle}>
-          透過專業量化策略與多元套利組合，提供優質的資產管理與配置方案
+          Simple Finance 為現有私人客戶提供專屬的資產管理服務。本平台採邀請制，不接受公開申請。
         </Text>
         <View style={styles.heroStats}>
           <View style={styles.heroStat}>
-            <Text style={styles.statValue}>7%</Text>
-            <Text style={styles.statLabel}>歷史年化報酬*</Text>
+            <Text style={styles.statValue}>邀請制</Text>
+            <Text style={styles.statLabel}>僅限現有客戶</Text>
           </View>
           <View style={styles.heroStat}>
             <Text style={styles.statValue}>24/7</Text>
-            <Text style={styles.statLabel}>即時資產追蹤</Text>
+            <Text style={styles.statLabel}>帳戶查詢服務</Text>
           </View>
         </View>
         <TouchableOpacity style={styles.btnPrimary} onPress={() => navigation.navigate('ContactTab')}>
-          <Text style={styles.btnPrimaryText}>了解方案</Text>
+          <Text style={styles.btnPrimaryText}>聯絡客服諮詢</Text>
         </TouchableOpacity>
-        <Text style={styles.heroDisclaimer}>*過往績效不代表未來收益，投資涉及風險</Text>
+        <Text style={styles.heroDisclaimer}>本平台僅供現有客戶使用，新用戶請聯絡客服了解加入方式</Text>
       </View>
 
       {/* Why Choose Us */}
       <View style={styles.sectionGray}>
-        <Text style={styles.sectionTitle}>為什麼選擇我們</Text>
+        <Text style={styles.sectionTitle}>服務特色</Text>
         <Text style={styles.sectionSubtitle}>
-          在當今充滿挑戰和機遇的金融世界中，每個人都夢想實現財務自由和穩定。Simple Finance 透過專業的量化投資策略與技術，為用戶提供優質的資產配置方案。
+          Simple Finance 為現有私人客戶提供專屬的帳戶管理平台，協助客戶隨時掌握自身帳戶狀況。
         </Text>
         {features.map((f, i) => (
           <View key={i} style={styles.featureCard}>
@@ -58,12 +58,12 @@ export default function HomeScreen() {
 
       {/* Performance */}
       <View style={styles.sectionRate}>
-        <Text style={styles.sectionTitle}>歷史年化報酬可達 7%</Text>
-        <Text style={styles.sectionSubtitle}>透過推薦計畫還可獲得額外回饋</Text>
-        <TouchableOpacity style={styles.btnOutline} onPress={() => navigation.navigate('Referral')}>
-          <Text style={styles.btnOutlineText}>了解更多</Text>
+        <Text style={styles.sectionTitle}>為現有客戶提供專屬服務</Text>
+        <Text style={styles.sectionSubtitle}>現有客戶可透過 App 隨時查看帳戶狀況。新客戶請聯絡客服了解加入方式。</Text>
+        <TouchableOpacity style={styles.btnOutline} onPress={() => navigation.navigate('ContactTab')}>
+          <Text style={styles.btnOutlineText}>聯絡客服諮詢</Text>
         </TouchableOpacity>
-        <Text style={styles.disclaimer}>過往績效不保證未來表現，實際收益可能因市場波動而有所不同</Text>
+        <Text style={styles.disclaimer}>本平台採邀請制，僅限現有私人客戶使用</Text>
       </View>
 
       {/* Currencies */}
@@ -80,10 +80,10 @@ export default function HomeScreen() {
 
       {/* CTA */}
       <View style={styles.ctaSection}>
-        <Text style={styles.ctaTitle}>探索適合您的投資方案</Text>
-        <Text style={styles.ctaSubtitle}>與我們的團隊聯繫，了解更多詳情</Text>
+        <Text style={styles.ctaTitle}>邀請制服務</Text>
+        <Text style={styles.ctaSubtitle}>本平台僅限現有客戶使用，新客戶請聯絡客服了解加入方式</Text>
         <TouchableOpacity style={styles.btnPrimary} onPress={() => navigation.navigate('ContactTab')}>
-          <Text style={styles.btnPrimaryText}>聯繫我們</Text>
+          <Text style={styles.btnPrimaryText}>聯絡客服諮詢</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>

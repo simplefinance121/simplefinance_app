@@ -37,8 +37,8 @@ export default function DataScreen() {
       </View>
 
       <View style={styles.ctaSection}>
-        <Text style={styles.ctaTitle}>了解適合您的投資方案</Text>
-        <Text style={styles.ctaSubtitle}>投資報酬依市場狀況而定，過往績效不代表未來表現。</Text>
+        <Text style={styles.ctaTitle}>邀請制服務</Text>
+        <Text style={styles.ctaSubtitle}>本平台僅供現有私人客戶使用，新客戶請聯絡客服了解加入方式。</Text>
       </View>
     </ScrollView>
   )

@@ -9,30 +9,30 @@ export default function ReferralScreen() {
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 20 }}>
       <View style={styles.section}>
         <Text style={styles.bodyText}>
-          推薦朋友加入即可獲得額外回饋，同時支持我們的社群一起成長。
+          本平台採邀請制，現有客戶可透過專屬邀請碼介紹符合資格的朋友加入。
         </Text>
         <Text style={styles.bodyText}>
-          用戶不僅是我們最珍貴的夥伴，更是我們的成長動力。
+          詳細制度與資格條件請聯絡客服諮詢。
         </Text>
       </View>
 
       <View style={styles.sectionGray}>
-        <Text style={styles.sectionTitle}>回饋制度</Text>
+        <Text style={styles.sectionTitle}>制度說明</Text>
         <View style={styles.card}>
           <Text style={styles.cardHighlight}>推薦獎勵制度</Text>
           <Text style={styles.cardDesc}>聯絡客服諮詢</Text>
         </View>
         <View style={styles.card}>
-          <Text style={styles.cardHighlight}>年度回饋</Text>
-          <Text style={styles.cardDesc}>從推薦的用戶開始使用的當天起，每年持續獲得回饋</Text>
+          <Text style={styles.cardHighlight}>邀請制</Text>
+          <Text style={styles.cardDesc}>僅限現有客戶推薦合適的朋友加入本平台</Text>
         </View>
       </View>
 
       <View style={styles.ctaSection}>
-        <Text style={styles.ctaTitle}>了解更多方案詳情</Text>
-        <Text style={styles.ctaSubtitle}>歡迎與我們的團隊聯繫</Text>
+        <Text style={styles.ctaTitle}>了解更多制度詳情</Text>
+        <Text style={styles.ctaSubtitle}>請聯絡客服取得完整制度說明與邀請碼</Text>
         <TouchableOpacity style={styles.btnPrimary} onPress={() => navigation.navigate('ContactTab')}>
-          <Text style={styles.btnPrimaryText}>聯繫我們</Text>
+          <Text style={styles.btnPrimaryText}>聯絡客服諮詢</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
