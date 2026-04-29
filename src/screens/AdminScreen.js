@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ScrollView, View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, StyleSheet } from 'react-native'
+import { ScrollView, View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, StyleSheet, Modal } from 'react-native'
 import { useNavigation } from '@react-navigation/native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Toast from 'react-native-toast-message'
@@ -35,6 +35,16 @@ export default function AdminScreen() {
   const [searchQuery, setSearchQuery] = useState('')
   const [txPage, setTxPage] = useState({})
   const [txFilter, setTxFilter] = useState({})
+  const [deletingUser, setDeletingUser] = useState(null)
+  const [referralModal, setReferralModal] = useState(null)
+  const [referralData, setReferralData] = useState(null)
+  const [referralLoading, setReferralLoading] = useState(false)
+  const [editingBonusRate, setEditingBonusRate] = useState(false)
+  const [bonusRateValue, setBonusRateValue] = useState('')
+  const [bonusRateSaving, setBonusRateSaving] = useState(false)
+  const [interestRateModal, setInterestRateModal] = useState(null)
+  const [interestRateValue, setInterestRateValue] = useState('')
+  const [interestRateSaving, setInterestRateSaving] = useState(false)
   const navigation = useNavigation()
   const insets = useSafeAreaInsets()
 
@@ -65,35 +75,27 @@ export default function AdminScreen() {
 
   const fetchTransactions = async (userId) => {
     try {
-      const res = await fetch(`${API}/api/admin/users/${userId}/transactions`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (res.ok) {
-        const data = await res.json()
+      const [txRes, intRes, refRes] = await Promise.all([
+        fetch(`${API}/api/admin/users/${userId}/transactions`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${API}/api/admin/users/${userId}/interest`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${API}/api/admin/users/${userId}/referral-bonus`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ])
+      if (txRes.ok) {
+        const data = await txRes.json()
         setTransactions((prev) => ({ ...prev, [userId]: data }))
       }
-    } catch { /* ignore */ }
-  }
-
-  const fetchInterest = async (userId) => {
-    try {
-      const res = await fetch(`${API}/api/admin/users/${userId}/interest`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (res.ok) {
-        const data = await res.json()
+      if (intRes.ok) {
+        const data = await intRes.json()
         setInterestRecords((prev) => ({ ...prev, [userId]: data }))
       }
-    } catch { /* ignore */ }
-  }
-
-  const fetchReferralBonus = async (userId) => {
-    try {
-      const res = await fetch(`${API}/api/admin/users/${userId}/referral-bonus`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (res.ok) {
-        const data = await res.json()
+      if (refRes.ok) {
+        const data = await refRes.json()
         setReferralBonusRecords((prev) => ({ ...prev, [userId]: data }))
       }
     } catch { /* ignore */ }
@@ -105,9 +107,8 @@ export default function AdminScreen() {
     } else {
       setExpandedId(userId)
       fetchTransactions(userId)
-      fetchInterest(userId)
-      fetchReferralBonus(userId)
       setTxPage((prev) => ({ ...prev, [userId]: 1 }))
+      setTxFilter((prev) => ({ ...prev, [userId]: 'deposit' }))
     }
     setTxForm({ type: 'deposit', amount: '', date: '' })
   }
@@ -221,6 +222,122 @@ export default function AdminScreen() {
     }
   }
 
+  const deleteUser = (user) => {
+    Alert.alert(
+      '刪除用戶',
+      `確定要刪除用戶「${user.name}」（${user.email}）嗎？\n\n此操作將刪除該用戶的所有資料（交易紀錄、利息、推薦獎勵等），且無法復原。`,
+      [
+        { text: '取消', style: 'cancel' },
+        {
+          text: '刪除',
+          style: 'destructive',
+          onPress: async () => {
+            setDeletingUser(user._id)
+            try {
+              const res = await fetch(`${API}/api/admin/users/${user._id}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+              })
+              if (!res.ok) {
+                const data = await res.json()
+                Toast.show({ type: 'error', text1: data.message || '刪除失敗' })
+                return
+              }
+              setUsers(users.filter((u) => u._id !== user._id))
+              if (expandedId === user._id) setExpandedId(null)
+              Toast.show({ type: 'success', text1: `已刪除用戶「${user.name}」` })
+            } catch {
+              Toast.show({ type: 'error', text1: '刪除用戶失敗' })
+            } finally {
+              setDeletingUser(null)
+            }
+          },
+        },
+      ]
+    )
+  }
+
+  const openReferralModal = async (user) => {
+    setReferralModal(user)
+    setReferralData(null)
+    setEditingBonusRate(false)
+    setReferralLoading(true)
+    try {
+      const res = await fetch(`${API}/api/admin/users/${user._id}/referrals`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        setReferralData(await res.json())
+      } else {
+        Toast.show({ type: 'error', text1: '取得推薦制度資料失敗' })
+        setReferralModal(null)
+      }
+    } catch {
+      Toast.show({ type: 'error', text1: '取得推薦制度資料失敗' })
+      setReferralModal(null)
+    } finally {
+      setReferralLoading(false)
+    }
+  }
+
+  const saveBonusRate = async () => {
+    if (bonusRateValue === '' || isNaN(Number(bonusRateValue))) {
+      Toast.show({ type: 'error', text1: '請輸入有效的百分比' })
+      return
+    }
+    setBonusRateSaving(true)
+    try {
+      const res = await fetch(`${API}/api/admin/users/${referralModal._id}/referral-bonus-rate`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ rate: Number(bonusRateValue) }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        Toast.show({ type: 'error', text1: data.message || '更新失敗' })
+        return
+      }
+      setReferralData((prev) => ({
+        ...prev,
+        referralBonusRate: Number(bonusRateValue),
+        referees: prev.referees.map((r) => ({ ...r, bonusPercent: Number(bonusRateValue) })),
+      }))
+      setEditingBonusRate(false)
+      Toast.show({ type: 'success', text1: '推薦獎勵百分比已更新' })
+    } catch {
+      Toast.show({ type: 'error', text1: '更新推薦獎勵百分比失敗' })
+    } finally {
+      setBonusRateSaving(false)
+    }
+  }
+
+  const saveInterestRate = async () => {
+    if (interestRateValue === '' || isNaN(Number(interestRateValue))) {
+      Toast.show({ type: 'error', text1: '請輸入有效的利率' })
+      return
+    }
+    setInterestRateSaving(true)
+    try {
+      const res = await fetch(`${API}/api/admin/users/${interestRateModal._id}/interest-rate`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ rate: Number(interestRateValue) }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        Toast.show({ type: 'error', text1: data.message || '更新失敗' })
+        return
+      }
+      setUsers(users.map((u) => u._id === interestRateModal._id ? { ...u, interestRate: Number(interestRateValue) } : u))
+      setInterestRateModal(null)
+      Toast.show({ type: 'success', text1: '利率已更新' })
+    } catch {
+      Toast.show({ type: 'error', text1: '更新利率失敗' })
+    } finally {
+      setInterestRateSaving(false)
+    }
+  }
+
   if (!authUser) {
     return <View style={{ flex: 1, backgroundColor: colors.dark }} />
   }
@@ -288,7 +405,6 @@ export default function AdminScreen() {
               </View>
             </View>
 
-            {/* Currency selector */}
             <View style={styles.currencyRow}>
               {['USD', 'AUD', 'TWD'].map((c) => (
                 <TouchableOpacity
@@ -304,7 +420,6 @@ export default function AdminScreen() {
               ))}
             </View>
 
-            {/* Actions */}
             <View style={styles.actionRow}>
               {editingId === u._id ? (
                 <>
@@ -323,14 +438,38 @@ export default function AdminScreen() {
                   >
                     <Text style={styles.editBtnText}>編輯資產</Text>
                   </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.viewBtn}
+                    onPress={() => navigation.navigate('UserDashboard', { viewUserId: u._id })}
+                  >
+                    <Text style={styles.viewBtnText}>查看</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.referralBtn} onPress={() => openReferralModal(u)}>
+                    <Text style={styles.referralBtnText}>推薦制度</Text>
+                  </TouchableOpacity>
                   <TouchableOpacity style={styles.expandBtn} onPress={() => toggleExpand(u._id)}>
-                    <Text style={styles.expandBtnText}>{expandedId === u._id ? '收起' : '入金/出金'}</Text>
+                    <Text style={styles.expandBtnText}>{expandedId === u._id ? '收起' : '詳細資料'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.interestBtn}
+                    onPress={() => {
+                      setInterestRateModal(u)
+                      setInterestRateValue(String(u.interestRate || 7))
+                    }}
+                  >
+                    <Text style={styles.interestBtnText}>利率 {u.interestRate || 7}%</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.deleteUserBtn}
+                    onPress={() => deleteUser(u)}
+                    disabled={deletingUser === u._id}
+                  >
+                    <Text style={styles.deleteUserBtnText}>{deletingUser === u._id ? '刪除中...' : '刪除用戶'}</Text>
                   </TouchableOpacity>
                 </>
               )}
             </View>
 
-            {/* Expanded transaction section */}
             {expandedId === u._id && (
               <View style={styles.expandedSection}>
                 <Text style={styles.expandedTitle}>新增入金/出金紀錄</Text>
@@ -373,109 +512,85 @@ export default function AdminScreen() {
                   </TouchableOpacity>
                 </View>
 
-                <Text style={styles.expandedTitle}>交易紀錄</Text>
                 <View style={styles.txFilterRow}>
                   {[
-                    { key: 'interest', label: '利息' },
                     { key: 'deposit', label: '入金' },
                     { key: 'withdrawal', label: '出金' },
-                    { key: 'referral_bonus', label: '推薦獎勵' },
+                    { key: 'interest', label: '利息' },
+                    { key: 'referral', label: '推薦獎勵' },
                   ].map((f) => (
                     <TouchableOpacity
                       key={f.key}
-                      style={[styles.txFilterBtn, (txFilter[u._id] || 'interest') === f.key && styles.txFilterBtnActive]}
+                      style={[styles.txFilterBtn, (txFilter[u._id] || 'deposit') === f.key && styles.txFilterBtnActive]}
                       onPress={() => {
                         setTxFilter((prev) => ({ ...prev, [u._id]: f.key }))
                         setTxPage((prev) => ({ ...prev, [u._id]: 1 }))
                       }}
                     >
-                      <Text style={[styles.txFilterBtnText, (txFilter[u._id] || 'interest') === f.key && styles.txFilterBtnTextActive]}>
+                      <Text style={[styles.txFilterBtnText, (txFilter[u._id] || 'deposit') === f.key && styles.txFilterBtnTextActive]}>
                         {f.label}
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
+
                 {(() => {
-                  const filter = txFilter[u._id] || 'interest'
-                  if (filter === 'referral_bonus') {
-                    const records = referralBonusRecords[u._id] || []
-                    if (records.length === 0) return <Text style={styles.emptyText}>尚無推薦獎勵紀錄</Text>
-                    const page = txPage[u._id] || 1
-                    const totalPages = Math.ceil(records.length / TX_PAGE_SIZE)
-                    const pageRecords = records.slice((page - 1) * TX_PAGE_SIZE, page * TX_PAGE_SIZE)
-                    return (
-                      <>
-                        {pageRecords.map((rec) => (
-                          <View key={rec._id} style={styles.txRow}>
-                            <Text style={styles.txDate}>{new Date(rec.date).toLocaleDateString('zh-TW')}</Text>
-                            <Text style={[styles.txType, styles.referralText]}>{rec.fromUserName || '推薦用戶'}</Text>
-                            <Text style={styles.txAmount}>+{fmtAmount(rec.amount)}</Text>
-                          </View>
-                        ))}
-                        {totalPages > 1 && (
-                          <View style={styles.paginationRow}>
-                            <TouchableOpacity disabled={page <= 1} onPress={() => setTxPage((prev) => ({ ...prev, [u._id]: page - 1 }))}>
-                              <Text style={[styles.pageBtn, page <= 1 && { color: colors.textMuted }]}>‹</Text>
-                            </TouchableOpacity>
-                            <Text style={styles.pageInfo}>{page} / {totalPages}</Text>
-                            <TouchableOpacity disabled={page >= totalPages} onPress={() => setTxPage((prev) => ({ ...prev, [u._id]: page + 1 }))}>
-                              <Text style={[styles.pageBtn, page >= totalPages && { color: colors.textMuted }]}>›</Text>
-                            </TouchableOpacity>
-                          </View>
-                        )}
-                      </>
-                    )
+                  const filter = txFilter[u._id] || 'deposit'
+                  let list = []
+                  let showDelete = false
+                  let typeLabel = ''
+                  let typeStyle = null
+
+                  if (filter === 'deposit') {
+                    list = (transactions[u._id] || []).filter((tx) => tx.type === 'deposit')
+                    showDelete = true
+                    typeLabel = '入金'
+                    typeStyle = styles.depositText
+                  } else if (filter === 'withdrawal') {
+                    list = (transactions[u._id] || []).filter((tx) => tx.type === 'withdrawal')
+                    showDelete = true
+                    typeLabel = '出金'
+                    typeStyle = styles.withdrawalText
+                  } else if (filter === 'interest') {
+                    list = interestRecords[u._id] || []
+                    typeLabel = '利息'
+                    typeStyle = styles.interestText
+                  } else if (filter === 'referral') {
+                    list = referralBonusRecords[u._id] || []
+                    typeLabel = '推薦獎勵'
+                    typeStyle = styles.referralText
                   }
-                  if (filter === 'interest') {
-                    const records = interestRecords[u._id] || []
-                    if (records.length === 0) return <Text style={styles.emptyText}>尚無利息紀錄</Text>
-                    const page = txPage[u._id] || 1
-                    const totalPages = Math.ceil(records.length / TX_PAGE_SIZE)
-                    const pageRecords = records.slice((page - 1) * TX_PAGE_SIZE, page * TX_PAGE_SIZE)
-                    return (
-                      <>
-                        {pageRecords.map((rec) => (
-                          <View key={rec._id} style={styles.txRow}>
-                            <Text style={styles.txDate}>{new Date(rec.date).toLocaleDateString('zh-TW')}</Text>
-                            <Text style={[styles.txType, styles.interestText]}>利息</Text>
-                            <Text style={styles.txAmount}>+{fmtAmount(rec.amount)}</Text>
-                          </View>
-                        ))}
-                        {totalPages > 1 && (
-                          <View style={styles.paginationRow}>
-                            <TouchableOpacity disabled={page <= 1} onPress={() => setTxPage((prev) => ({ ...prev, [u._id]: page - 1 }))}>
-                              <Text style={[styles.pageBtn, page <= 1 && { color: colors.textMuted }]}>‹</Text>
-                            </TouchableOpacity>
-                            <Text style={styles.pageInfo}>{page} / {totalPages}</Text>
-                            <TouchableOpacity disabled={page >= totalPages} onPress={() => setTxPage((prev) => ({ ...prev, [u._id]: page + 1 }))}>
-                              <Text style={[styles.pageBtn, page >= totalPages && { color: colors.textMuted }]}>›</Text>
-                            </TouchableOpacity>
-                          </View>
-                        )}
-                      </>
-                    )
+
+                  if (list.length === 0) {
+                    return <Text style={styles.emptyText}>尚無{typeLabel}紀錄</Text>
                   }
-                  const allTx = (transactions[u._id] || []).filter((tx) => tx.type === filter)
-                  if (allTx.length === 0) return <Text style={styles.emptyText}>尚無交易紀錄</Text>
+
                   const page = txPage[u._id] || 1
-                  const totalPages = Math.ceil(allTx.length / TX_PAGE_SIZE)
-                  const pageTx = allTx.slice((page - 1) * TX_PAGE_SIZE, page * TX_PAGE_SIZE)
+                  const totalPages = Math.ceil(list.length / TX_PAGE_SIZE)
+                  const pageItems = list.slice((page - 1) * TX_PAGE_SIZE, page * TX_PAGE_SIZE)
+
                   return (
                     <>
-                      {pageTx.map((tx) => (
+                      {pageItems.map((tx) => (
                         <View key={tx._id} style={styles.txRow}>
                           <Text style={styles.txDate}>{new Date(tx.date).toLocaleDateString('zh-TW')}</Text>
-                          <Text style={[styles.txType, tx.type === 'deposit' ? styles.depositText : styles.withdrawalText]}>
-                            {tx.type === 'deposit' ? '入金' : '出金'}
+                          <Text style={[styles.txType, typeStyle]}>
+                            {filter === 'referral' ? `來自 ${tx.fromUserName || '推薦用戶'}` : typeLabel}
                           </Text>
-                          <Text style={styles.txAmount}>{fmtAmount(tx.amount)}</Text>
-                          <TouchableOpacity
-                            style={styles.deleteBtn}
-                            onPress={() => deleteTransaction(tx._id, u._id)}
-                            disabled={deleting === tx._id}
-                          >
-                            <Text style={styles.deleteBtnText}>{deleting === tx._id ? '...' : '刪除'}</Text>
-                          </TouchableOpacity>
+                          <Text style={[styles.txAmount, typeStyle]}>
+                            {filter === 'withdrawal' ? '-' : '+'}{fmtAmount(tx.amount)}
+                          </Text>
+                          {showDelete ? (
+                            <TouchableOpacity
+                              style={styles.deleteBtn}
+                              onPress={() => deleteTransaction(tx._id, u._id)}
+                              disabled={deleting === tx._id}
+                            >
+                              <Text style={styles.deleteBtnText}>{deleting === tx._id ? '...' : '刪除'}</Text>
+                            </TouchableOpacity>
+                          ) : (
+                            <View style={styles.deletePlaceholder} />
+                          )}
                         </View>
                       ))}
                       {totalPages > 1 && (
@@ -499,13 +614,140 @@ export default function AdminScreen() {
 
         {users.length === 0 && !error && <Text style={styles.emptyText}>目前沒有用戶</Text>}
 
-        <TouchableOpacity
-          style={styles.logoutBtn}
-          onPress={() => logout()}
-        >
+        <TouchableOpacity style={styles.logoutBtn} onPress={() => logout()}>
           <Text style={styles.logoutBtnText}>登出</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Referral Modal */}
+      <Modal
+        visible={!!referralModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setReferralModal(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{referralModal?.name} — 推薦制度</Text>
+              <TouchableOpacity onPress={() => setReferralModal(null)}>
+                <Text style={styles.modalClose}>×</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalBody}>
+              {referralLoading ? (
+                <ActivityIndicator color={colors.primary} style={{ marginVertical: 24 }} />
+              ) : referralData ? (
+                <>
+                  <View style={styles.bonusRateRow}>
+                    <Text style={styles.bonusRateLabel}>推薦獎勵%數：</Text>
+                    {editingBonusRate ? (
+                      <View style={styles.bonusRateEdit}>
+                        <TextInput
+                          style={styles.bonusRateInput}
+                          value={bonusRateValue}
+                          onChangeText={setBonusRateValue}
+                          keyboardType="numeric"
+                          autoFocus
+                        />
+                        <Text style={styles.bonusRatePercent}>%</Text>
+                        <TouchableOpacity style={styles.saveBtn} onPress={saveBonusRate} disabled={bonusRateSaving}>
+                          <Text style={styles.saveBtnText}>{bonusRateSaving ? '儲存中...' : '儲存'}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.cancelBtn} onPress={() => setEditingBonusRate(false)} disabled={bonusRateSaving}>
+                          <Text style={styles.cancelBtnText}>取消</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <View style={styles.bonusRateDisplay}>
+                        <Text style={styles.bonusRateValue}>{referralData.referralBonusRate}%</Text>
+                        <TouchableOpacity
+                          style={styles.smallEditBtn}
+                          onPress={() => {
+                            setEditingBonusRate(true)
+                            setBonusRateValue(String(referralData.referralBonusRate))
+                          }}
+                        >
+                          <Text style={styles.smallEditBtnText}>修改</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
+
+                  <Text style={styles.modalSubtitle}>被推薦人</Text>
+                  {referralData.referees.length > 0 ? (
+                    <View style={styles.modalTable}>
+                      <View style={styles.modalTableHeader}>
+                        <Text style={[styles.modalTableHeaderText, { flex: 1 }]}>被推薦人名</Text>
+                        <Text style={[styles.modalTableHeaderText, { flex: 1, textAlign: 'right' }]}>獎勵%數</Text>
+                      </View>
+                      {referralData.referees.map((r, i) => (
+                        <View key={i} style={styles.modalTableRow}>
+                          <Text style={[styles.modalTableCell, { flex: 1 }]}>{r.name}</Text>
+                          <Text style={[styles.modalTableCell, { flex: 1, textAlign: 'right' }]}>{r.bonusPercent}%</Text>
+                        </View>
+                      ))}
+                    </View>
+                  ) : (
+                    <Text style={styles.emptyText}>無被推薦人</Text>
+                  )}
+
+                  <Text style={styles.modalSubtitle}>推薦人</Text>
+                  {referralData.referrer ? (
+                    <View style={styles.modalTable}>
+                      <View style={styles.modalTableHeader}>
+                        <Text style={[styles.modalTableHeaderText, { flex: 1 }]}>人名</Text>
+                      </View>
+                      <View style={styles.modalTableRow}>
+                        <Text style={[styles.modalTableCell, { flex: 1 }]}>{referralData.referrer.name}</Text>
+                      </View>
+                    </View>
+                  ) : (
+                    <Text style={styles.emptyText}>無推薦人</Text>
+                  )}
+                </>
+              ) : null}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Interest Rate Modal */}
+      <Modal
+        visible={!!interestRateModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setInterestRateModal(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{interestRateModal?.name} — 利率設定</Text>
+              <TouchableOpacity onPress={() => setInterestRateModal(null)}>
+                <Text style={styles.modalClose}>×</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.modalBody}>
+              <Text style={styles.interestRateLabel}>年利率 (%)</Text>
+              <TextInput
+                style={styles.interestRateInput}
+                value={interestRateValue}
+                onChangeText={setInterestRateValue}
+                keyboardType="numeric"
+                autoFocus
+              />
+              <View style={styles.interestRateActions}>
+                <TouchableOpacity style={styles.saveBtn} onPress={saveInterestRate} disabled={interestRateSaving}>
+                  <Text style={styles.saveBtnText}>{interestRateSaving ? '儲存中...' : '儲存'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.cancelBtn} onPress={() => setInterestRateModal(null)} disabled={interestRateSaving}>
+                  <Text style={styles.cancelBtnText}>取消</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   )
 }
@@ -580,7 +822,7 @@ const styles = StyleSheet.create({
   currencyBtnActive: { backgroundColor: colors.primary },
   currencyBtnText: { fontSize: 13, color: colors.textSecondary },
   currencyBtnTextActive: { color: colors.white },
-  actionRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
   editBtn: {
     backgroundColor: colors.primary,
     paddingHorizontal: 14,
@@ -588,6 +830,20 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   editBtnText: { color: colors.white, fontSize: 13, fontWeight: '600' },
+  viewBtn: {
+    backgroundColor: '#0ea5e9',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  viewBtnText: { color: colors.white, fontSize: 13, fontWeight: '600' },
+  referralBtn: {
+    backgroundColor: '#f59e0b',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  referralBtnText: { color: colors.white, fontSize: 13, fontWeight: '600' },
   expandBtn: {
     borderWidth: 1,
     borderColor: colors.primary,
@@ -596,6 +852,20 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   expandBtnText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
+  interestBtn: {
+    backgroundColor: '#8b5cf6',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  interestBtnText: { color: colors.white, fontSize: 13, fontWeight: '600' },
+  deleteUserBtn: {
+    backgroundColor: '#dc2626',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  deleteUserBtnText: { color: colors.white, fontSize: 13, fontWeight: '600' },
   saveBtn: {
     backgroundColor: '#16a34a',
     paddingHorizontal: 14,
@@ -637,7 +907,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.text,
   },
-  txFilterRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  txFilterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
   txFilterBtn: {
     paddingHorizontal: 16,
     paddingVertical: 6,
@@ -656,12 +926,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   txDate: { flex: 1, fontSize: 13, color: colors.text },
-  txType: { fontSize: 13, width: 40 },
+  txType: { fontSize: 13, flex: 1 },
   depositText: { color: colors.deposit },
   withdrawalText: { color: colors.withdrawal },
   interestText: { color: colors.interest },
   referralText: { color: '#f59e0b' },
-  txAmount: { fontSize: 13, color: colors.text, width: 80 },
+  txAmount: { fontSize: 13, color: colors.text, width: 90, textAlign: 'right' },
   deleteBtn: {
     backgroundColor: '#fee2e2',
     paddingHorizontal: 10,
@@ -669,6 +939,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   deleteBtnText: { color: colors.error, fontSize: 12 },
+  deletePlaceholder: { width: 0 },
   paginationRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 12, gap: 16 },
   pageBtn: { fontSize: 18, color: colors.primary, fontWeight: '600' },
   pageInfo: { fontSize: 14, color: colors.textSecondary },
@@ -682,4 +953,90 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   logoutBtnText: { color: colors.primary, fontSize: 16, fontWeight: '600' },
+
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    width: '100%',
+    maxWidth: 500,
+    maxHeight: '85%',
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+  },
+  modalTitle: { fontSize: 17, fontWeight: '700', color: colors.text, flex: 1 },
+  modalClose: { fontSize: 28, color: colors.textMuted, lineHeight: 28, paddingHorizontal: 8 },
+  modalBody: { padding: 20 },
+  modalSubtitle: { fontSize: 15, fontWeight: '700', color: colors.text, marginTop: 16, marginBottom: 8 },
+  bonusRateRow: { marginBottom: 12 },
+  bonusRateLabel: { fontSize: 14, color: colors.textSecondary, marginBottom: 8 },
+  bonusRateDisplay: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  bonusRateValue: { fontSize: 18, fontWeight: '700', color: colors.primary },
+  bonusRateEdit: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  bonusRateInput: {
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    fontSize: 15,
+    width: 80,
+    color: colors.text,
+  },
+  bonusRatePercent: { fontSize: 16, color: colors.text },
+  smallEditBtn: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  smallEditBtnText: { color: colors.white, fontSize: 12, fontWeight: '600' },
+  modalTable: {
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  modalTableHeader: {
+    flexDirection: 'row',
+    backgroundColor: colors.backgroundGray,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  modalTableHeaderText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  modalTableRow: {
+    flexDirection: 'row',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+  },
+  modalTableCell: { fontSize: 14, color: colors.text },
+  interestRateLabel: { fontSize: 14, color: colors.textSecondary, marginBottom: 8 },
+  interestRateInput: {
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    color: colors.text,
+    marginBottom: 16,
+  },
+  interestRateActions: { flexDirection: 'row', gap: 8 },
 })

@@ -40,7 +40,10 @@ function AppNavigator() {
       {user ? (
         // Logged in
         user.email === ADMIN_EMAIL ? (
-          <Stack.Screen name="Admin" component={AdminScreen} options={{ title: '管理後台', headerShown: false }} />
+          <>
+            <Stack.Screen name="Admin" component={AdminScreen} options={{ title: '管理後台', headerShown: false }} />
+            <Stack.Screen name="UserDashboard" component={DashboardScreen} options={{ title: '用戶資產', headerShown: false }} />
+          </>
         ) : (
           <Stack.Screen name="Dashboard" component={DashboardScreen} options={{ title: '我的資產', headerShown: false }} />
         )

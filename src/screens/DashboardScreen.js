@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { ScrollView, View, Text, TouchableOpacity, Dimensions, ActivityIndicator, PanResponder, StyleSheet, Share } from 'react-native'
-import { useNavigation } from '@react-navigation/native'
+import { useNavigation, useRoute } from '@react-navigation/native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path, Defs, LinearGradient, Stop, Line, Text as SvgText } from 'react-native-svg'
 import { useAuth } from '../context/AuthContext'
@@ -17,7 +17,10 @@ function getChartWidth() {
 
 export default function DashboardScreen() {
   const { user: authUser, token, logout, updateUser } = useAuth()
-  const [user, setUser] = useState(authUser)
+  const route = useRoute()
+  const viewUserId = route?.params?.viewUserId
+  const isAdminView = !!viewUserId
+  const [user, setUser] = useState(isAdminView ? null : authUser)
   const [transactions, setTransactions] = useState([])
   const [interestRecords, setInterestRecords] = useState([])
   const [txPage, setTxPage] = useState(1)
@@ -38,13 +41,30 @@ export default function DashboardScreen() {
 
   useEffect(() => {
     if (!authUser || !token) return
-    setUser(authUser)
+    if (!isAdminView) setUser(authUser)
     fetchData()
-  }, [authUser, token])
+  }, [authUser, token, viewUserId])
 
   const fetchData = async () => {
     if (!token) return
     try {
+      if (isAdminView) {
+        const res = await fetch(`${API}/api/admin/users/${viewUserId}/dashboard`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!mountedRef.current) return
+        if (res.ok) {
+          const data = await res.json()
+          if (mountedRef.current) {
+            setUser(data.user)
+            setTransactions(data.transactions || [])
+            setInterestRecords(data.interestRecords || [])
+            setReferralBonusRecords(data.referralBonusRecords || [])
+          }
+        }
+        return
+      }
+
       const [meRes, txRes, intRes, refBonusRes] = await Promise.all([
         fetch(`${API}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API}/api/auth/me/transactions`, { headers: { Authorization: `Bearer ${token}` } }),
@@ -83,20 +103,21 @@ export default function DashboardScreen() {
   const assets = user ? (user.assets || 0) : 0
   const earnings = user ? (user.allTimeEarnings || 0) : 0
   const currency = user ? (user.currency || 'USD') : 'USD'
+  const interestRate = user?.interestRate ?? 7
 
   const fmt = (v) => {
     const n = Number(v)
-    if (n < 1) return `$${n.toFixed(2)}`
+    if (n < 1) return `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     return `$${Math.round(n).toLocaleString()}`
   }
 
-  const yearOptions = [1, 2, 3, 4, 5]
+  const yearOptions = [1, 3, 5, 10, 20]
   const projectionDays = 365 * totalYears
 
   const chartData = useMemo(() => {
     if (!assets && transactions.length === 0) return null
     const DAY_MS = 24 * 60 * 60 * 1000
-    const dailyRate = 0.07 / 365
+    const dailyRate = Math.pow(interestRate / 100 + 1, 1 / 365) - 1
     const allValues = []
     const allDates = []
 
@@ -159,7 +180,7 @@ export default function DashboardScreen() {
     }
 
     return { values, dates }
-  }, [assets, projectionDays, transactions, interestRecords])
+  }, [assets, projectionDays, transactions, interestRecords, interestRate])
 
   if (!authUser) return (
     <View style={{ flex: 1, backgroundColor: colors.dark }} />
@@ -181,6 +202,11 @@ export default function DashboardScreen() {
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }} scrollEnabled={scrollEnabled}>
       {/* Stats Header */}
       <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
+        {isAdminView && (
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <Text style={styles.backBtnText}>← 返回管理後台</Text>
+          </TouchableOpacity>
+        )}
         <Text style={styles.welcome}>歡迎回來，{user.name}</Text>
         <Text style={styles.headerTitle}>資產與收益</Text>
         <View style={styles.statsRow}>
@@ -202,7 +228,7 @@ export default function DashboardScreen() {
         {/* Chart */}
         {chartData && chartData.values.length > 1 && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>資產成長趨勢 (年化 7% 複利)</Text>
+            <Text style={styles.cardTitle}>資產成長趨勢 (年化 {interestRate}% 複利)</Text>
             <View style={styles.yearBtns}>
               {yearOptions.map((y) => (
                 <TouchableOpacity
@@ -218,7 +244,7 @@ export default function DashboardScreen() {
             </View>
             <AreaChart data={chartData} onTouchStart={() => setScrollEnabled(false)} onTouchEnd={() => setScrollEnabled(true)} />
             <Text style={styles.chartNote}>
-              * 歷史資料為實際資產紀錄，未來預估基於年化 7% 每日複利計算，實際報酬可能因市場波動而有所不同。
+              * 歷史資料為實際資產紀錄，未來預估基於年化 {interestRate}% 每日複利計算，實際報酬可能因市場波動而有所不同。
             </Text>
           </View>
         )}
@@ -328,10 +354,12 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* Logout */}
-        <TouchableOpacity style={styles.logoutBtn} onPress={() => logout()}>
-          <Text style={styles.logoutBtnText}>登出</Text>
-        </TouchableOpacity>
+        {/* Logout (hidden in admin view) */}
+        {!isAdminView && (
+          <TouchableOpacity style={styles.logoutBtn} onPress={() => logout()}>
+            <Text style={styles.logoutBtnText}>登出</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </ScrollView>
   )
@@ -649,6 +677,15 @@ const styles = StyleSheet.create({
   },
   welcome: { color: '#a8b2d1', fontSize: 14, marginBottom: 4 },
   headerTitle: { color: colors.white, fontSize: 24, fontWeight: '700', marginBottom: 20 },
+  backBtn: {
+    alignSelf: 'flex-start',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginBottom: 12,
+  },
+  backBtnText: { color: colors.white, fontSize: 13, fontWeight: '600' },
   statsRow: { flexDirection: 'row', alignItems: 'center' },
   statCard: { flex: 1, alignItems: 'center' },
   statDivider: { width: 1, height: 40, backgroundColor: '#333' },
