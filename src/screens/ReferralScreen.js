@@ -19,7 +19,8 @@ export default function ReferralScreen() {
       <View style={styles.sectionGray}>
         <Text style={styles.sectionTitle}>回饋制度</Text>
         <View style={styles.card}>
-          <Text style={styles.cardHighlight}>聯絡客服諮詢</Text>
+          <Text style={styles.cardHighlight}>推薦獎勵制度</Text>
+          <Text style={styles.cardDesc}>聯絡客服諮詢</Text>
         </View>
         <View style={styles.card}>
           <Text style={styles.cardHighlight}>年度回饋</Text>
