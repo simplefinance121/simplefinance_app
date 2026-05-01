@@ -160,8 +160,9 @@ export default function DashboardScreen() {
       }
     }
 
+    const projectionBase = allValues.length > 0 ? allValues[allValues.length - 1] : assets
     for (let day = 1; day <= projectionDays; day++) {
-      allValues.push(Math.round(assets * Math.pow(1 + dailyRate, day)))
+      allValues.push(Math.round(projectionBase * Math.pow(1 + dailyRate, day)))
       allDates.push(new Date(today.getTime() + day * DAY_MS))
     }
 
