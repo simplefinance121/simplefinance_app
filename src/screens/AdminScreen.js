@@ -159,7 +159,13 @@ export default function AdminScreen() {
         return
       }
       const data = await res.json()
-      updateUserAssets(userId, data.updatedAssets)
+      const currentUser = users.find((u) => u._id === userId)
+      const currentAssets = currentUser?.assets || 0
+      const amount = Number(txForm.amount)
+      const newAssets = data.updatedAssets !== undefined
+        ? data.updatedAssets
+        : txForm.type === 'deposit' ? currentAssets + amount : currentAssets - amount
+      updateUserAssets(userId, newAssets)
       await fetchTransactions(userId)
       setTxForm({ type: 'deposit', amount: '', date: '' })
     } catch {

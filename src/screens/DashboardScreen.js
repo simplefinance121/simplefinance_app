@@ -133,7 +133,7 @@ export default function DashboardScreen() {
     if (allRecords.length > 0) {
       const firstDate = new Date(allRecords[0].date)
       firstDate.setHours(0, 0, 0, 0)
-      hDays = Math.floor((today - firstDate) / DAY_MS)
+      hDays = Math.max(0, Math.floor((today - firstDate) / DAY_MS))
 
       const txByDay = {}
       for (const rec of allRecords) {

@@ -26,6 +26,7 @@ export default function LoginScreen() {
   }, [])
 
   const init = async () => {
+    fetch(`${API}/api/auth/me`).catch(() => {})
     const validated = await AsyncStorage.getItem(INVITE_FLAG_KEY)
     if (validated === 'true') setNeedsInviteCode(false)
     await loadSavedCredentials()
@@ -60,7 +61,7 @@ export default function LoginScreen() {
 
     try {
       const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 15000)
+      const timeout = setTimeout(() => controller.abort(), 60000)
 
       const res = await fetch(`${API}/api/auth/login`, {
         method: 'POST',
@@ -97,7 +98,7 @@ export default function LoginScreen() {
       await login(data.user, data.token)
     } catch (err) {
       if (err.name === 'AbortError') {
-        setError('連線逾時，請確認網路連線後再試。')
+        setError('伺服器啟動中，請稍候約 30 秒後再試。')
       } else {
         setError(`登入失敗: ${err.message}`)
       }
