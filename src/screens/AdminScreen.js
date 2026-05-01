@@ -166,6 +166,11 @@ export default function AdminScreen() {
         ? data.updatedAssets
         : txForm.type === 'deposit' ? currentAssets + amount : currentAssets - amount
       updateUserAssets(userId, newAssets)
+      await fetch(`${API}/api/admin/users/${userId}/assets`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ assets: newAssets }),
+      })
       await fetchTransactions(userId)
       setTxForm({ type: 'deposit', amount: '', date: '' })
     } catch {
@@ -194,7 +199,21 @@ export default function AdminScreen() {
               return
             }
             const data = await res.json()
-            updateUserAssets(userId, data.updatedAssets)
+            const currentUser = users.find((u) => u._id === userId)
+            const currentAssets = currentUser?.assets || 0
+            const txList = transactions[userId] || []
+            const deleted = txList.find((t) => t._id === txId)
+            const newAssets = data.updatedAssets !== undefined
+              ? data.updatedAssets
+              : deleted
+                ? deleted.type === 'deposit' ? currentAssets - deleted.amount : currentAssets + deleted.amount
+                : currentAssets
+            updateUserAssets(userId, newAssets)
+            await fetch(`${API}/api/admin/users/${userId}/assets`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ assets: newAssets }),
+            })
             await fetchTransactions(userId)
           } catch {
             Toast.show({ type: 'error', text1: '刪除交易記錄失敗' })
