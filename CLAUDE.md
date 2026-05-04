@@ -4,7 +4,7 @@ Developer context for Claude Code sessions on this project.
 
 ## Scope
 
-**This repo only.** Do not modify the website repo (`C:\Users\User\Desktop\simplefinance_website`). All feature work belongs here in the app.
+**This repo only.** Do not modify the website repo (`simplefinance_website`). All feature work belongs here in the app.
 
 ## What This App Is
 
