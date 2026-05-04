@@ -110,7 +110,7 @@ AppNavigator (Stack)
 - **Projection chart:**
   - Custom SVG area chart with gradient fill and smooth bezier curves
   - Historical segment replays actual transactions + interest records day-by-day to build the balance line; `hDays` is clamped with `Math.max(0, ...)` to prevent timezone edge-case negatives
-  - Future projection uses `projectionBase` = last historical computed balance (not `user.assets`), compounded at the user's per-user `interestRate`
+  - Future projection uses `projectionBase` = last historical computed balance (not `user.assets`), compounded at the user's per-user `interestRate` (app uses compound formula for projection; backend uses simple daily `balance * rate/365` for actual interest)
   - Year selector: 1, 3, 5, 10, 20 years
   - Touch crosshair: hold to see vertical + horizontal dashed lines, dot, and tooltip with date + balance
   - Scroll lock while touching the chart
@@ -142,6 +142,7 @@ AppNavigator (Stack)
   - `POST /api/admin/users/:id/transactions`
   - `DELETE /api/admin/transactions/:txId`
   - `DELETE /api/admin/users/:id`
+  - `POST /api/admin/recalculate-all-interest` (replays all interest for every user)
 
 ## Theme (`theme.js`)
 - Primary: `#4a6cf7`

@@ -18,7 +18,7 @@ React Native (Expo) iOS app — a **private client portal** for existing Simple 
 - **Remember Me** — pre-fills email and password on next open
 - **Server warmup ping** — fires a silent request on app launch so the Render backend is awake by the time the user taps Login; login timeout is 60s with a user-friendly cold-start message
 - **Dashboard** — live balance, cumulative earnings, currency badge
-- **Asset growth chart** — interactive SVG area chart; historical segment replays actual deposits and interest day-by-day; future projection compounds at the user's per-user annual rate (1 / 3 / 5 / 10 / 20 year selector); touch crosshair shows date + balance tooltip
+- **Asset growth chart** — interactive SVG area chart; historical segment replays actual deposits and interest day-by-day; future projection at the user's per-user annual rate (1 / 3 / 5 / 10 / 20 year selector); touch crosshair shows date + balance tooltip. Backend uses simple daily interest (`balance * rate / 365`); app chart projection uses compound formula (negligible difference at typical rates)
 - **Transaction records** (入金/出金) — paginated, 7 per page
 - **Daily interest records** — paginated, 7 per page
 - **Referral bonus earnings** — passive history of bonuses from referrals (no share/invite UI)

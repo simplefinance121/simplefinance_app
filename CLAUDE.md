@@ -4,7 +4,7 @@ Developer context for Claude Code sessions on this project.
 
 ## Scope
 
-**This repo only.** Do not modify the website repo (`C:\Users\kasper\Desktop\website`). All feature work belongs here in the app.
+**This repo only.** Do not modify the website repo (`C:\Users\User\Desktop\simplefinance_website`). All feature work belongs here in the app.
 
 ## What This App Is
 
@@ -42,7 +42,11 @@ eas submit --platform ios --profile production --latest
 
 **Asset sync after transactions:** After `AdminScreen` adds or deletes a transaction, the code immediately recalculates `newAssets` (using `data.updatedAssets` if the backend returns it, otherwise computing it locally), calls `updateUserAssets`, then PUTs to `/api/admin/users/:id/assets`. This keeps `user.assets` in the DB correct without needing a page reload. Don't remove this PUT.
 
-**Chart projection base:** `DashboardScreen` builds the historical balance day-by-day from transaction + interest records. The projection starts from `projectionBase = allValues[allValues.length - 1]` (last historical computed balance), not from `user.assets`. This is intentional — on the day of first deposit, `user.assets` may not reflect the deposit yet, but the computed balance will. `hDays` is wrapped in `Math.max(0, ...)` to guard against timezone edge cases.
+**Chart projection base:** `DashboardScreen` builds the historical balance day-by-day from transaction + interest records. The projection starts from `projectionBase = allValues[allValues.length - 1]` (last historical computed balance), not from `user.assets`. This is intentional — on the day of first deposit, `user.assets` may not reflect the deposit yet, but the computed balance will. `hDays` is wrapped in `Math.max(0, ...)` to guard against timezone edge cases. Note: the app chart uses the old compound daily formula for projection; the backend uses simple daily (`balance * rate/365`). The difference is negligible at typical rates.
+
+**Interest formula:** The backend calculates interest as `balance * (annualRate / 100) / 365` (simple daily), stored with full precision (8 decimal places). The website displays interest floored to 2 decimal places in the 每日利息紀錄 section. The app's `fmt()` function rounds to nearest dollar for values >= $1.
+
+**Deposit pending period:** New deposits are excluded from interest for 2 days. Deposit dates are stored normalized to Taiwan midnight (UTC+8) via `getTaiwanDayStart()` so the pending cutoff comparison is timezone-consistent.
 
 **Build number:** Managed by EAS (`appVersionSource: remote`, `autoIncrement: true`). Do not manually bump `buildNumber` in `app.json`.
 
@@ -59,3 +63,4 @@ eas submit --platform ios --profile production --latest
 - Don't shorten the 60s login timeout
 - Don't remove the admin asset-sync PUT after transactions
 - Don't use `user.assets` as the chart projection base
+- Don't change the interest formula in the app — it's controlled by the backend; the app just displays what the API returns
