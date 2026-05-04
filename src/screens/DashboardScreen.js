@@ -111,12 +111,6 @@ export default function DashboardScreen() {
     return `$${Math.round(n).toLocaleString()}`
   }
 
-  const fmtInterest = (v) => {
-    const n = Math.floor(Number(v) * 100) / 100
-    if (n < 1) return `$${n.toFixed(2)}`
-    return `$${Math.floor(n).toLocaleString()}`
-  }
-
   const yearOptions = [1, 3, 5, 10, 20]
   const projectionDays = 365 * totalYears
 
@@ -303,7 +297,7 @@ export default function DashboardScreen() {
                     {new Date(rec.date).toLocaleDateString('zh-TW')}
                   </Text>
                   <Text style={[styles.tableCell, { flex: 1, textAlign: 'right' }, styles.interestText]}>
-                    +{fmtInterest(rec.amount)}
+                    +{fmt(rec.amount)}
                   </Text>
                 </View>
               ))}
