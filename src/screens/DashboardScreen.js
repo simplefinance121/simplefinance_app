@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
-import { ScrollView, View, Text, TouchableOpacity, Dimensions, ActivityIndicator, PanResponder, StyleSheet } from 'react-native'
+import { ScrollView, View, Text, TouchableOpacity, Dimensions, ActivityIndicator, PanResponder, Platform, StyleSheet } from 'react-native'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path, Defs, LinearGradient, Stop, Line, Text as SvgText } from 'react-native-svg'
@@ -395,27 +395,28 @@ function AreaChart({ data, onTouchStart, onTouchEnd }) {
     return Math.max(0, Math.min(values.length - 1, idx))
   }
 
-  const panResponder = useMemo(() => PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: (evt) => {
-      onTouchStart?.()
-      const x = evt.nativeEvent.locationX
-      setActiveIndex(getIndexFromX(x))
-    },
-    onPanResponderMove: (evt) => {
-      const x = evt.nativeEvent.locationX
-      setActiveIndex(getIndexFromX(x))
-    },
-    onPanResponderRelease: () => {
-      setActiveIndex(null)
-      onTouchEnd?.()
-    },
-    onPanResponderTerminate: () => {
-      setActiveIndex(null)
-      onTouchEnd?.()
-    },
-  }), [values.length, drawWidth])
+  const panResponder = useMemo(() => {
+    if (Platform.OS === 'web') return { panHandlers: {} }
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        onTouchStart?.()
+        setActiveIndex(getIndexFromX(evt.nativeEvent.locationX))
+      },
+      onPanResponderMove: (evt) => {
+        setActiveIndex(getIndexFromX(evt.nativeEvent.locationX))
+      },
+      onPanResponderRelease: () => {
+        setActiveIndex(null)
+        onTouchEnd?.()
+      },
+      onPanResponderTerminate: () => {
+        setActiveIndex(null)
+        onTouchEnd?.()
+      },
+    })
+  }, [values.length, drawWidth])
 
   // Build line path
   let linePath = `M ${getX(0)} ${getY(values[0])}`
@@ -480,7 +481,18 @@ function AreaChart({ data, onTouchStart, onTouchEnd }) {
 
   return (
     <View style={{ position: 'relative' }}>
-      <View {...panResponder.panHandlers}>
+      <View
+        {...panResponder.panHandlers}
+        onMouseMove={Platform.OS === 'web' ? (e) => {
+          onTouchStart?.()
+          const rect = e.currentTarget.getBoundingClientRect()
+          setActiveIndex(getIndexFromX(e.clientX - rect.left))
+        } : undefined}
+        onMouseLeave={Platform.OS === 'web' ? () => {
+          setActiveIndex(null)
+          onTouchEnd?.()
+        } : undefined}
+      >
         <Svg width={chartWidth} height={CHART_HEIGHT}>
           <Defs>
             <LinearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">

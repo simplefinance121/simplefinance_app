@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ScrollView, View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, StyleSheet, Modal } from 'react-native'
+import { ScrollView, View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet, Modal } from 'react-native'
 import { useNavigation } from '@react-navigation/native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Toast from 'react-native-toast-message'
@@ -45,7 +45,16 @@ export default function AdminScreen() {
   const [interestRateModal, setInterestRateModal] = useState(null)
   const [interestRateValue, setInterestRateValue] = useState('')
   const [interestRateSaving, setInterestRateSaving] = useState(false)
+  const [confirmDialog, setConfirmDialog] = useState({ visible: false, title: '', message: '', onConfirm: null })
   const navigation = useNavigation()
+
+  const showConfirm = (title, message, onConfirm) => {
+    setConfirmDialog({ visible: true, title, message, onConfirm })
+  }
+
+  const hideConfirm = () => {
+    setConfirmDialog({ visible: false, title: '', message: '', onConfirm: null })
+  }
   const insets = useSafeAreaInsets()
 
   useEffect(() => {
@@ -181,48 +190,41 @@ export default function AdminScreen() {
   }
 
   const deleteTransaction = (txId, userId) => {
-    Alert.alert('確認', '確定要刪除此交易記錄嗎？', [
-      { text: '取消', style: 'cancel' },
-      {
-        text: '刪除',
-        style: 'destructive',
-        onPress: async () => {
-          setDeleting(txId)
-          try {
-            const res = await fetch(`${API}/api/admin/transactions/${txId}`, {
-              method: 'DELETE',
-              headers: { Authorization: `Bearer ${token}` },
-            })
-            if (!res.ok) {
-              const data = await res.json()
-              Toast.show({ type: 'error', text1: data.message || '刪除失敗' })
-              return
-            }
-            const data = await res.json()
-            const currentUser = users.find((u) => u._id === userId)
-            const currentAssets = currentUser?.assets || 0
-            const txList = transactions[userId] || []
-            const deleted = txList.find((t) => t._id === txId)
-            const newAssets = data.updatedAssets !== undefined
-              ? data.updatedAssets
-              : deleted
-                ? deleted.type === 'deposit' ? currentAssets - deleted.amount : currentAssets + deleted.amount
-                : currentAssets
-            updateUserAssets(userId, newAssets)
-            await fetch(`${API}/api/admin/users/${userId}/assets`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-              body: JSON.stringify({ assets: newAssets }),
-            })
-            await fetchTransactions(userId)
-          } catch {
-            Toast.show({ type: 'error', text1: '刪除交易記錄失敗' })
-          } finally {
-            setDeleting(null)
-          }
-        },
-      },
-    ])
+    showConfirm('確認', '確定要刪除此交易記錄嗎？', async () => {
+      setDeleting(txId)
+      try {
+        const res = await fetch(`${API}/api/admin/transactions/${txId}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!res.ok) {
+          const data = await res.json()
+          Toast.show({ type: 'error', text1: data.message || '刪除失敗' })
+          return
+        }
+        const data = await res.json()
+        const currentUser = users.find((u) => u._id === userId)
+        const currentAssets = currentUser?.assets || 0
+        const txList = transactions[userId] || []
+        const deleted = txList.find((t) => t._id === txId)
+        const newAssets = data.updatedAssets !== undefined
+          ? data.updatedAssets
+          : deleted
+            ? deleted.type === 'deposit' ? currentAssets - deleted.amount : currentAssets + deleted.amount
+            : currentAssets
+        updateUserAssets(userId, newAssets)
+        await fetch(`${API}/api/admin/users/${userId}/assets`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ assets: newAssets }),
+        })
+        await fetchTransactions(userId)
+      } catch {
+        Toast.show({ type: 'error', text1: '刪除交易記錄失敗' })
+      } finally {
+        setDeleting(null)
+      }
+    })
   }
 
   const updateCurrency = async (userId, currency) => {
@@ -248,37 +250,30 @@ export default function AdminScreen() {
   }
 
   const deleteUser = (user) => {
-    Alert.alert(
+    showConfirm(
       '刪除用戶',
       `確定要刪除用戶「${user.name}」（${user.email}）嗎？\n\n此操作將刪除該用戶的所有資料（交易紀錄、利息、推薦獎勵等），且無法復原。`,
-      [
-        { text: '取消', style: 'cancel' },
-        {
-          text: '刪除',
-          style: 'destructive',
-          onPress: async () => {
-            setDeletingUser(user._id)
-            try {
-              const res = await fetch(`${API}/api/admin/users/${user._id}`, {
-                method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` },
-              })
-              if (!res.ok) {
-                const data = await res.json()
-                Toast.show({ type: 'error', text1: data.message || '刪除失敗' })
-                return
-              }
-              setUsers(users.filter((u) => u._id !== user._id))
-              if (expandedId === user._id) setExpandedId(null)
-              Toast.show({ type: 'success', text1: `已刪除用戶「${user.name}」` })
-            } catch {
-              Toast.show({ type: 'error', text1: '刪除用戶失敗' })
-            } finally {
-              setDeletingUser(null)
-            }
-          },
-        },
-      ]
+      async () => {
+        setDeletingUser(user._id)
+        try {
+          const res = await fetch(`${API}/api/admin/users/${user._id}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          if (!res.ok) {
+            const data = await res.json()
+            Toast.show({ type: 'error', text1: data.message || '刪除失敗' })
+            return
+          }
+          setUsers(users.filter((u) => u._id !== user._id))
+          if (expandedId === user._id) setExpandedId(null)
+          Toast.show({ type: 'success', text1: `已刪除用戶「${user.name}」` })
+        } catch {
+          Toast.show({ type: 'error', text1: '刪除用戶失敗' })
+        } finally {
+          setDeletingUser(null)
+        }
+      }
     )
   }
 
@@ -737,6 +732,36 @@ export default function AdminScreen() {
         </View>
       </Modal>
 
+      {/* Confirm Dialog */}
+      <Modal
+        visible={confirmDialog.visible}
+        transparent
+        animationType="fade"
+        onRequestClose={hideConfirm}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { padding: 20 }]}>
+            <Text style={styles.modalTitle}>{confirmDialog.title}</Text>
+            <Text style={styles.confirmMessage}>{confirmDialog.message}</Text>
+            <View style={styles.confirmActions}>
+              <TouchableOpacity
+                style={styles.deleteUserBtn}
+                onPress={() => {
+                  const fn = confirmDialog.onConfirm
+                  hideConfirm()
+                  fn?.()
+                }}
+              >
+                <Text style={styles.deleteUserBtnText}>確認刪除</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.cancelBtn} onPress={hideConfirm}>
+                <Text style={styles.cancelBtnText}>取消</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Interest Rate Modal */}
       <Modal
         visible={!!interestRateModal}
@@ -1064,4 +1089,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   interestRateActions: { flexDirection: 'row', gap: 8 },
+  confirmMessage: { fontSize: 14, color: colors.textSecondary, marginTop: 12, lineHeight: 20 },
+  confirmActions: { flexDirection: 'row', gap: 8, marginTop: 20, justifyContent: 'flex-end' },
 })

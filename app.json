@@ -34,6 +34,18 @@
         "projectId": "4f45bf89-a088-41dd-ad89-b5ce4061a846"
       }
     },
+    "web": {
+      "favicon": "./assets/icon.png",
+      "bundler": "metro",
+      "name": "Simple Finance",
+      "shortName": "SF",
+      "description": "Simple Finance 客戶入口網站",
+      "backgroundColor": "#1a1a2e",
+      "themeColor": "#4a6cf7",
+      "lang": "zh-TW",
+      "display": "standalone",
+      "orientation": "portrait"
+    },
     "plugins": [
       "expo-web-browser"
     ],
