@@ -8,6 +8,7 @@ const pwaTags = [
   '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />',
   '<meta name="apple-mobile-web-app-title" content="Simple Finance" />',
   '<link rel="apple-touch-icon" href="/icon.png" />',
+  '<style>@supports (-webkit-touch-callout:none){input,textarea,select{font-size:16px!important}}</style>',
 ].join('\n    ')
 
 html = html.replace('</head>', `    ${pwaTags}\n  </head>`)
