@@ -1,27 +1,35 @@
-# Simple Finance App - Project Structure
+# Simple Finance App — Project Structure
 
 ## Overview
-React Native (Expo) iOS app for Simple Finance — a **private client portal**, not a public investment service. The app is invite-only: signup happens off-app (via the website), and the iOS app itself only allows existing clients to log in.
 
-**App flow:** Login (invite-code-gated on first install) → Dashboard (regular user) or Admin panel (admin email). The website hosts public marketing pages and the signup flow; this app is the authenticated client experience.
+Progressive Web App (PWA) built with React Native + Expo SDK 54 and react-native-web. Single codebase targets web; installed on phones via "Add to Home Screen" (no App Store). Deployed at **https://simplefinance-app.vercel.app**.
 
-This positioning (sometimes called "Path B" in App Review terms) is what allows the app to display balances, interest, and projections without requiring a financial-services license — Apple's Guideline 3.2.1 carve-out for private/internal portals.
+**App flow:** Install screen (first visit) → Login → Dashboard (regular user) or Admin panel (admin email).
 
 ## Tech Stack
-- **Framework:** React Native with Expo SDK 54 / React 19
-- **Navigation:** React Navigation v6 (Native Stack)
-- **State:** React Context (`AuthContext`)
-- **Storage:** AsyncStorage — remembered credentials and the first-install invite-code-validated flag
-- **Charts:** Custom SVG chart with `react-native-svg` (area chart with gradient fill, smooth bezier curves, touch crosshair tooltip)
-- **Notifications:** `react-native-toast-message`
-- **Backend API:** `https://simplefinance-website.onrender.com` (shared with the website)
-- **Distribution:** EAS Build + EAS Submit (configured for iOS App Store)
 
-## Key Dependencies (from package.json)
+| Concern | Library |
+|---|---|
+| Framework | React Native + Expo SDK 54 / React 19 |
+| Web target | react-native-web + react-dom |
+| Navigation | React Navigation v6 (Native Stack) |
+| Auth state | React Context (`AuthContext`) — in-memory, no persistence |
+| Storage | AsyncStorage (→ localStorage on web) — remembered credentials |
+| Charts | Custom SVG with `react-native-svg` |
+| Notifications | react-native-toast-message |
+| Bundler (web) | Expo Metro |
+| Deployment | Vercel (static export from `dist/`) |
+| Backend API | `https://simplefinance-website.onrender.com` |
+
+## Key Dependencies
+
 ```
 expo: ~54.0.0
 react: 19.1.0
 react-native: 0.81.5
+react-native-web: ^0.21.0
+react-dom: 19.1.0
+@expo/metro-runtime: ~6.1.2
 @react-navigation/native: 6.1.18
 @react-navigation/native-stack: 6.9.26
 @react-native-async-storage/async-storage: 2.2.0
@@ -29,193 +37,205 @@ react-native-svg: 15.12.1
 react-native-safe-area-context: ~5.6.0
 react-native-screens: ~4.16.0
 react-native-toast-message: ^2.2.0
-expo-status-bar: ~3.0.9
-expo-web-browser: ~15.0.10
 ```
 
 ## File Structure
+
 ```
 simplefinance_app/
-├── App.js                          # Entry — Stack Navigator (login-gate, no signup route)
-├── app.json                        # Expo config (bundle ID: com.simplefinance.app, EAS project ID wired)
-├── babel.config.js                 # Babel config (babel-preset-expo)
-├── eas.json                        # EAS Build & Submit config (Apple credentials configured)
-├── package.json                    # Dependencies
-├── .gitignore
+├── App.js                          # Entry — service worker registration, install gate, Stack Navigator
+├── app.json                        # Expo config — includes "web" section with PWA metadata
+├── babel.config.js
+├── package.json                    # scripts: web (dev), build:web (production export)
+├── eas.json                        # EAS config (retained but not used for active distribution)
+│
 ├── assets/
-│   ├── icon.png                    # 1024×1024 RGB — blue gradient circle (880px) on white canvas
-│   ├── adaptive-icon.png           # 1024×1024 RGBA — same circle, transparent background for Android
-│   └── splash.png                  # Splash screen image
+│   ├── icon.png                    # 1024×1024 RGB — blue circle on white (used as PWA icon)
+│   ├── adaptive-icon.png           # RGBA — for Android adaptive icon
+│   └── splash.png                  # Splash screen
+│
+├── public/                         # Copied verbatim into dist/ at build time
+│   ├── manifest.json               # PWA manifest (name, icons, display: standalone, theme colour)
+│   └── sw.js                       # Service worker — cache-first for assets, network-first for HTML
+│
+├── scripts/
+│   └── postbuild-web.js            # Post-build: injects PWA + iOS meta tags into index.html,
+│                                   # copies icon.png + public/ into dist/
+│
+├── web/
+│   └── index.html                  # Reference HTML template (not used by Metro bundler directly)
+│
 └── src/
     ├── config.js                   # API base URL
-    ├── theme.js                    # Color palette
+    ├── theme.js                    # Color palette + font tokens
     ├── context/
-    │   └── AuthContext.js          # Auth state — login/logout, remember-me credentials
+    │   └── AuthContext.js          # login / logout / updateUser / remember-me helpers
     └── screens/
-        ├── LoginScreen.js          # Invite-code-gated login (first install only); server warmup ping on mount
+        ├── InstallScreen.js        # PWA install gate — Android prompt or iOS step guide
+        ├── LoginScreen.js          # Email + password login; server warmup ping; Remember Me
         ├── ForgotPasswordScreen.js # Password reset request
         ├── ResetPasswordScreen.js  # Password reset with token
-        ├── DashboardScreen.js      # Client portal — balance, projection chart, transactions, interest, referral earnings
-        ├── AdminScreen.js          # Admin panel — full user management with auto-asset sync
-        ├── SignupScreen.js         # On disk but unused (signup happens on website only)
-        ├── HomeScreen.js           # Marketing page kept for reference; not in navigation
-        ├── AboutScreen.js          # Marketing page kept for reference; not in navigation
-        ├── FAQScreen.js            # Marketing page kept for reference; not in navigation
-        ├── ContactScreen.js        # Marketing page kept for reference; not in navigation
-        ├── ReferralScreen.js       # Marketing page kept for reference; not in navigation
-        ├── DataScreen.js           # Marketing page kept for reference; not in navigation
-        ├── TermsScreen.js          # Marketing page kept for reference; not in navigation
-        └── PrivacyScreen.js        # Marketing page kept for reference; not in navigation
+        ├── DashboardScreen.js      # Client portal — chart, transactions, interest, referral earnings
+        ├── AdminScreen.js          # Admin panel — user management, transactions, modals
+        └── ProfileScreen.js        # User profile — change name or email
 ```
 
 ## Navigation Flow
+
 ```
-AppNavigator (Stack)
-├── user === null (not logged in)
-│   ├── Login          (headerShown: false; invite-code-gated on first install)
-│   ├── ForgotPassword (header: 忘記密碼)
-│   └── ResetPassword  (header: 重設密碼)
+App.js
+├── showInstall === true (browser, not yet installed)
+│   └── InstallScreen  (fullscreen, before NavigationContainer)
 │
-├── user.email === ADMIN_EMAIL (admin logged in)
-│   ├── Admin          (headerShown: false)
-│   └── UserDashboard  (headerShown: false; admin views any user's dashboard)
-│
-└── user (regular user logged in)
-    └── Dashboard      (headerShown: false)
+└── NavigationContainer → Stack.Navigator
+    ├── user === null (not logged in)
+    │   ├── Login
+    │   ├── ForgotPassword
+    │   └── ResetPassword
+    │
+    ├── user.email === ADMIN_EMAIL
+    │   ├── Admin
+    │   └── UserDashboard  (admin viewing a user's dashboard via viewUserId param)
+    │
+    └── regular user
+        ├── Dashboard
+        └── Profile
 ```
 
 ## Authentication Design
-- **No persistent sessions.** Auth state lives in React Context (in-memory). Closing the app logs the user out.
-- **Remember Me** stores email + password in AsyncStorage so the form is pre-filled on next open. User must still tap Login.
-- **Invite code gate:** on first install, the login screen requires an invite code (currently `SimpleInvest`) in addition to email/password. After one successful login, AsyncStorage flag `invite_validated: true` is set and the invite code field is hidden on subsequent app opens. Reinstall = invite code required again.
-- **No in-app signup.** The Signup route is intentionally removed from the navigator so reviewers and users see only an invite-code-required login wall.
+
+- **No persistent sessions.** Token lives in React Context (in-memory). Closing the app/tab logs out.
+- **Remember Me** stores email + password in AsyncStorage (localStorage on web) so the form pre-fills on next open. User must still tap Login.
+- **No invite code.** Login is email + password only.
 - **Admin access:** `simplefinance.com@gmail.com`.
+- **Profile updates:** `PUT /api/auth/me` — changes name and/or email in the database and updates the in-memory auth context immediately.
+
+## PWA Setup
+
+### Install flow (`InstallScreen.js` + `App.js`)
+- `App.js` checks `window.matchMedia('(display-mode: standalone)')` and `window.navigator.standalone` on web to detect if already installed
+- If not installed and `sf_install_dismissed` is not set in localStorage, `InstallScreen` is shown
+- Android / Chrome: captures `beforeinstallprompt` event; "立即安裝" triggers the native browser prompt
+- iOS / Safari: shows three-step Add to Home Screen instructions
+- "先在瀏覽器使用" sets `sf_install_dismissed = true` in localStorage permanently
+- Successful install (Android): dismissal not stored — deleting and revisiting shows the prompt again
+
+### Service Worker (`public/sw.js`)
+- **Install:** pre-caches `/manifest.json`, `/icon.png`, `/favicon.ico`
+- **HTML:** network-first (always fetches latest app shell)
+- **All other same-origin assets (JS bundles, images):** cache-first, then network; response is cached for future use
+- **Cross-origin requests (API calls):** never intercepted
+
+### Build pipeline (`scripts/postbuild-web.js`)
+Runs after `expo export --platform web`:
+1. Injects into `dist/index.html`:
+   - `<link rel="manifest">`
+   - Apple PWA meta tags (`apple-mobile-web-app-capable`, status bar style, title, touch icon)
+   - iOS auto-zoom fix: `@supports (-webkit-touch-callout:none){ input,textarea,select{ font-size:16px!important } }`
+2. Copies `assets/icon.png` → `dist/icon.png`
+3. Copies all files from `public/` → `dist/`
 
 ## Screens — Detail
 
-### Login Screen (`LoginScreen.js`)
+### InstallScreen (`InstallScreen.js`)
+- Shown before login when app is opened in browser and not yet installed
+- Displays app icon, name, tagline
+- Android: "📲 立即安裝" button → triggers `beforeinstallprompt.prompt()`
+- iOS: numbered step guide with highlighted action labels
+- Desktop: message to open on a phone
+- "先在瀏覽器使用 →" skips permanently (sets localStorage flag)
+
+### LoginScreen (`LoginScreen.js`)
 - Dark navy header with logo, brand name, tagline
 - White rounded form card
-- **Server warmup ping** — fires `GET /api/auth/me` on mount (`.catch(() => {})`) so the Render backend wakes before the user taps Login
-- **Invite code field** rendered conditionally — only on first install (when `invite_validated` flag is absent from AsyncStorage)
-- Email + password fields with icons
-- Remember Me checkbox + Forgot Password link
-- Login button only — no signup button, no "or" divider
-- Footer with copyright and disclaimer
-- Safe-area insets, 60-second AbortController timeout; shows '伺服器啟動中，請稍候約 30 秒後再試。' on abort
+- **Server warmup ping** — fires `GET /api/auth/me` on mount to wake the Render backend
+- Email + password fields, Remember Me checkbox, Forgot Password link
+- 60-second AbortController timeout; shows `伺服器啟動中，請稍候約 30 秒後再試。` on abort
+- No invite code, no signup link
 
-### Dashboard Screen (`DashboardScreen.js`)
-- Dark header with welcome message, balance, cumulative earnings, currency badge
-- "Back to Admin" button visible when admin is viewing another user's dashboard via the `viewUserId` route param
-- **Projection chart:**
-  - Custom SVG area chart with gradient fill and smooth bezier curves
-  - Historical segment replays actual transactions + interest records day-by-day to build the balance line; `hDays` is clamped with `Math.max(0, ...)` to prevent timezone edge-case negatives
-  - Future projection uses `projectionBase` = last historical computed balance (not `user.assets`), compounded at the user's per-user `interestRate` (app uses compound formula for projection; backend uses simple daily `balance * rate/365` for actual interest)
+### DashboardScreen (`DashboardScreen.js`)
+- Dark header: welcome message, balance, cumulative earnings, currency badge
+- **⚙ 個人資料** button (top-right) — navigates to ProfileScreen (hidden in admin view)
+- **← 返回管理後台** button (admin viewing a user via `viewUserId` param)
+- **Projection chart** (custom SVG via `react-native-svg`):
+  - Historical segment builds balance day-by-day from transactions + interest records
+  - Future projection from `projectionBase` (last historical balance) using per-user `interestRate` (compound)
   - Year selector: 1, 3, 5, 10, 20 years
-  - Touch crosshair: hold to see vertical + horizontal dashed lines, dot, and tooltip with date + balance
-  - Scroll lock while touching the chart
-  - Y-axis uses nice round numbers; X-axis shows ~5 month labels
-  - Title shows the user's actual rate, e.g. "資產成長趨勢 (年化 7% 複利)"
-- **Transaction records** (入金/出金) — paginated, 7 per page
-- **Interest records** (每日利息) — paginated, 7 per page
-- **Referral bonus earnings** (推薦獎勵利息) — passive history of bonuses earned from referrals; no share/copy controls
-- Logout button (hidden when admin is viewing as another user)
+  - Interactive crosshair — touch/mouse: vertical + horizontal dashed lines, dot, tooltip (date + balance)
+  - Scroll disabled while interacting with chart (native); mouse events on web
+  - Y-axis nice-number scaling; X-axis ~5 date labels
+- Transaction records (入金/出金), interest records (每日利息), referral bonus records — all paginated 7/page with 首頁/末頁 controls
+- Logout button (hidden in admin view)
 
-### Admin Screen (`AdminScreen.js`)
-- User list with search by name or email, sorted by assets desc
-- **Per-user actions:**
-  - Edit assets inline
-  - Currency selector (USD / AUD / TWD)
-  - 詳細資料 (Details) — expandable section with transaction add/list, filter tabs for 入金/出金/利息/推薦獎勵, paginated 10 per page
-  - **Auto-asset sync** — after every transaction add or delete, the screen immediately recalculates the user's assets and PUTs to `/api/admin/users/:id/assets`, keeping the DB in sync without requiring a page reload
-  - 查看 (View) — navigates to that user's dashboard via `UserDashboard` route
-  - 推薦制度 (Referral) — modal showing referees + referrer; admin can edit per-user referral bonus rate
-  - 利率 — modal to set per-user annual interest rate
-  - 刪除用戶 (Delete user) — confirmation alert, cascades to transactions/interest/referral bonus records
+### AdminScreen (`AdminScreen.js`)
+- User list: search by name/email, sorted by assets descending
+- Per-user: edit assets, currency selector (USD/AUD/TWD), interest rate modal, referral modal, view dashboard, expand details, delete user
+- **Expanded section:** add transaction form (入金/出金 + amount + date), filter tabs, paginated list, delete buttons
+- **Auto-asset sync:** after every transaction add/delete, assets are recalculated and PUT to `/api/admin/users/:id/assets`
+- **Confirm modal** replaces native `Alert` (web compatible) for delete confirmation dialogs
 - Admin endpoints used:
   - `GET /api/admin/users`
-  - `PUT /api/admin/users/:id/assets`
-  - `PUT /api/admin/users/:id/currency`
-  - `PUT /api/admin/users/:id/interest-rate`
-  - `PUT /api/admin/users/:id/referral-bonus-rate`
+  - `PUT /api/admin/users/:id/assets`, `/currency`, `/interest-rate`, `/referral-bonus-rate`
   - `GET /api/admin/users/:id/transactions`, `/interest`, `/referral-bonus`, `/referrals`, `/dashboard`
   - `POST /api/admin/users/:id/transactions`
   - `DELETE /api/admin/transactions/:txId`
   - `DELETE /api/admin/users/:id`
-  - `POST /api/admin/recalculate-all-interest` (replays all interest for every user)
+
+### ProfileScreen (`ProfileScreen.js`)
+- Accessible via ⚙ 個人資料 from the Dashboard header
+- Displays current name and email in editable fields
+- Save button activates only when a field has changed
+- `PUT /api/auth/me` — backend validates, checks email uniqueness, updates MongoDB record
+- On success: updates in-memory auth context (`updateUser`) and navigates back
 
 ## Theme (`theme.js`)
-- Primary: `#4a6cf7`
-- Dark background: `#1a1a2e`
-- Dark navies: `#0f3460`, `#16213e`
-- Text: `#333` / `#555` / `#666`
-- Background gray: `#f5f5f5`
-- Deposit / success: `#166534`
-- Withdrawal / error: `#991b1b`
-- Interest highlight: `#4a6cf7`
-- Referral bonus highlight: `#f59e0b`
+
+| Token | Value |
+|---|---|
+| `primary` | `#4a6cf7` |
+| `dark` | `#1a1a2e` |
+| `darkNavy` | `#0f3460` |
+| `darkNavy2` | `#16213e` |
+| `text` | `#333` |
+| `textSecondary` | `#555` |
+| `textMuted` | `#999` |
+| `backgroundGray` | `#f5f5f5` |
+| `deposit` | `#166534` |
+| `withdrawal` | `#991b1b` |
+| `interest` | `#4a6cf7` |
+| referral bonus | `#f59e0b` |
 
 ## Commands
+
 ```bash
-# Development
+# Install
 npm install --legacy-peer-deps
-npx expo start --clear
 
-# Build for iOS App Store (runs on Expo's macOS cloud workers)
-eas build --platform ios --profile production
+# Development (opens browser at localhost:8081)
+npm run web
 
-# Submit to App Store Connect
-eas submit --platform ios --profile production --latest
+# Production build → dist/
+npm run build:web
+
+# Deploy (from dist/ folder, or push to GitHub for auto-deploy)
+vercel deploy
 ```
 
-## EAS Configuration (`eas.json`)
-```json
-{
-  "cli": { "version": ">= 12.0.0", "appVersionSource": "remote" },
-  "build": {
-    "production": {
-      "ios": { "buildConfiguration": "Release", "autoIncrement": true }
-    }
-  },
-  "submit": {
-    "production": {
-      "ios": {
-        "appleId": "kasper900322@gmail.com",
-        "ascAppId": "6765585581",
-        "appleTeamId": "UFT8Q9TG3D"
-      }
-    }
-  }
-}
-```
-- `appVersionSource: remote` — build number managed by EAS, not local `app.json`
-- `autoIncrement: true` — build number increments automatically on each production build
+## Deployment
 
-## App Store Submission Status
+- **Platform:** Vercel (free tier, simplefinance121's account)
+- **URL:** https://simplefinance-app.vercel.app
+- **Build command:** `npm run build:web`
+- **Output directory:** `dist`
+- **Install command:** `npm install --legacy-peer-deps`
+- **Auto-deploy:** every push to `main` branch triggers a Vercel redeploy
+- **Backend CORS:** `simplefinance-app.vercel.app` is whitelisted in `server/index.js` on the website repo
 
-**Positioning:** Path B — private client portal (Apple Guideline 3.2.1 carve-out, no financial-services license required because the app is invite-only and not a public investment service).
+## Backend Notes
 
-**Checklist:**
-- [x] Invite-code login gate
-- [x] In-app signup removed
-- [x] Marketing screens reframed as private-portal language
-- [x] Referral share UI removed from user dashboard (bonus history retained as account record)
-- [x] App icon — 1024×1024 RGB, Telegram-style padding (880px circle on white canvas)
-- [x] Apple Developer Program enrolled
-- [x] App Store Connect app record created (bundle ID: `com.simplefinance.app`)
-- [x] `eas.json` configured with real Apple ID, ASC App ID, Team ID
-- [x] EAS project ID written into `app.json` (`4f45bf89-a088-41dd-ad89-b5ce4061a846`)
-- [x] First build submitted to App Store Connect (version 1.0.0)
-- [ ] App Store listing metadata (description in zh-Hant, screenshots, privacy URL)
-- [ ] Reviewer notes with demo credentials and private-portal explanation
-
-**Reviewer demo credentials must include:**
-- Demo email + password for a regular user account
-- Sample invite code: `SimpleInvest`
-
-## Notes
-- Backend on Render free tier — cold start takes 30–60s. The login screen fires a silent warmup ping on mount to minimize the wait.
-- All UI text is in Traditional Chinese (繁體中文).
-- Unused screens (Home, About, FAQ, Contact, Referral, Data, Terms, Privacy, Signup) are kept on disk but not wired into navigation.
-- The dashboard chart uses each user's individual `interestRate` (set per-user by admin), not a hardcoded global rate.
-- `adaptive-icon.png` is RGBA with transparent corners so Android's `backgroundColor: #1a1a2e` shows through correctly. `icon.png` is RGB with white corners (iOS clips to squircle itself).
+- Render free tier sleeps after inactivity; first request takes 30–60s
+- LoginScreen fires a silent warmup ping on mount to minimize wait
+- All API calls use `Authorization: Bearer <token>` header
+- Admin-only routes additionally check `req.user.email === 'simplefinance.com@gmail.com'`
+- Interest is calculated as `balance * (annualRate / 100) / 365` (simple daily) by the backend
+- New deposits are excluded from interest for 2 days; deposit dates are normalized to Taiwan midnight (UTC+8)
