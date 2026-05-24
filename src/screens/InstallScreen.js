@@ -5,6 +5,7 @@ import { colors } from '../theme'
 export default function InstallScreen({ onContinue }) {
   const [installPrompt, setInstallPrompt] = useState(null)
   const [isIOS, setIsIOS] = useState(false)
+  const [isIOSChrome, setIsIOSChrome] = useState(false)
   const [installing, setInstalling] = useState(false)
 
   useEffect(() => {
@@ -14,7 +15,9 @@ export default function InstallScreen({ onContinue }) {
     }
 
     const ua = navigator.userAgent
-    setIsIOS(/iPad|iPhone|iPod/.test(ua) && !window.MSStream)
+    const ios = /iPad|iPhone|iPod/.test(ua) && !window.MSStream
+    setIsIOS(ios)
+    setIsIOSChrome(ios && /CriOS/.test(ua))
 
     const handler = (e) => {
       e.preventDefault()
@@ -73,6 +76,15 @@ export default function InstallScreen({ onContinue }) {
                 {installing ? '安裝中...' : '📲  立即安裝'}
               </Text>
             </TouchableOpacity>
+          </View>
+        ) : isIOSChrome ? (
+          // iOS Chrome: can't install from Chrome — redirect to Safari
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>請使用 Safari 開啟</Text>
+            <Text style={styles.sectionDesc}>
+              iOS 上的 Chrome 無法安裝網頁應用程式。{'\n'}
+              請複製網址，用 <Text style={styles.stepHighlight}>Safari</Text> 開啟後再加入主畫面。
+            </Text>
           </View>
         ) : isIOS ? (
           // iOS Safari: manual steps
