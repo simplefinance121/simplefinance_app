@@ -203,9 +203,13 @@ export default function DashboardScreen() {
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }} scrollEnabled={scrollEnabled}>
       {/* Stats Header */}
       <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
-        {isAdminView && (
+        {isAdminView ? (
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
             <Text style={styles.backBtnText}>← 返回管理後台</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={styles.profileBtn} onPress={() => navigation.navigate('Profile')}>
+            <Text style={styles.profileBtnText}>⚙ 個人資料</Text>
           </TouchableOpacity>
         )}
         <Text style={styles.welcome}>歡迎回來，{user.name}</Text>
@@ -684,6 +688,15 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   backBtnText: { color: colors.white, fontSize: 13, fontWeight: '600' },
+  profileBtn: {
+    alignSelf: 'flex-end',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginBottom: 12,
+  },
+  profileBtnText: { color: '#a8b2d1', fontSize: 13, fontWeight: '600' },
   statsRow: { flexDirection: 'row', alignItems: 'center' },
   statCard: { flex: 1, alignItems: 'center' },
   statDivider: { width: 1, height: 40, backgroundColor: '#333' },

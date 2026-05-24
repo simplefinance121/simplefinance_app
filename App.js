@@ -14,6 +14,7 @@ import ResetPasswordScreen from './src/screens/ResetPasswordScreen'
 import DashboardScreen from './src/screens/DashboardScreen'
 import AdminScreen from './src/screens/AdminScreen'
 import InstallScreen from './src/screens/InstallScreen'
+import ProfileScreen from './src/screens/ProfileScreen'
 
 const Stack = createNativeStackNavigator()
 const ADMIN_EMAIL = 'simplefinance.com@gmail.com'
@@ -46,7 +47,10 @@ function AppNavigator() {
             <Stack.Screen name="UserDashboard" component={DashboardScreen} options={{ title: '用戶資產', headerShown: false }} />
           </>
         ) : (
-          <Stack.Screen name="Dashboard" component={DashboardScreen} options={{ title: '我的資產', headerShown: false }} />
+          <>
+            <Stack.Screen name="Dashboard" component={DashboardScreen} options={{ title: '我的資產', headerShown: false }} />
+            <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: '個人資料', headerShown: false }} />
+          </>
         )
       ) : (
         // Not logged in

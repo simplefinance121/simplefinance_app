@@ -2,21 +2,15 @@ import { useState, useEffect } from 'react'
 import { ScrollView, View, Text, TextInput, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, Image, StyleSheet } from 'react-native'
 import { useNavigation } from '@react-navigation/native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useAuth } from '../context/AuthContext'
 import API from '../config'
 import { colors } from '../theme'
 
-const ADMIN_EMAIL = 'simplefinance.com@gmail.com'
-const INVITE_CODE = 'SimpleInvest'
-const INVITE_FLAG_KEY = 'invite_validated'
-
 export default function LoginScreen() {
-  const [form, setForm] = useState({ email: '', password: '', inviteCode: '' })
+  const [form, setForm] = useState({ email: '', password: '' })
   const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [needsInviteCode, setNeedsInviteCode] = useState(true)
   const navigation = useNavigation()
   const { login, saveCredentials, clearCredentials, getRememberedCredentials } = useAuth()
   const insets = useSafeAreaInsets()
@@ -27,8 +21,6 @@ export default function LoginScreen() {
 
   const init = async () => {
     fetch(`${API}/api/auth/me`).catch(() => {})
-    const validated = await AsyncStorage.getItem(INVITE_FLAG_KEY)
-    if (validated === 'true') setNeedsInviteCode(false)
     await loadSavedCredentials()
   }
 
@@ -45,16 +37,6 @@ export default function LoginScreen() {
     if (!form.email || !form.password) {
       setError('請填寫所有欄位')
       return
-    }
-    if (needsInviteCode) {
-      if (!form.inviteCode) {
-        setError('請輸入邀請碼')
-        return
-      }
-      if (form.inviteCode !== INVITE_CODE) {
-        setError('邀請碼錯誤，請聯絡客服取得邀請碼')
-        return
-      }
     }
     setError('')
     setLoading(true)
@@ -89,10 +71,6 @@ export default function LoginScreen() {
         await saveCredentials(form.email, form.password)
       } else {
         await clearCredentials()
-      }
-
-      if (needsInviteCode) {
-        await AsyncStorage.setItem(INVITE_FLAG_KEY, 'true')
       }
 
       await login(data.user, data.token)
@@ -131,34 +109,13 @@ export default function LoginScreen() {
           {/* Login Form */}
           <View style={styles.formCard}>
             <Text style={styles.formTitle}>歡迎回來</Text>
-            <Text style={styles.formSubtitle}>
-              {needsInviteCode ? '本平台採邀請制，首次登入請輸入邀請碼' : '登入您的帳戶'}
-            </Text>
+            <Text style={styles.formSubtitle}>登入您的帳戶</Text>
 
             {error ? (
               <View style={styles.errorBox}>
                 <Text style={styles.errorText}>{error}</Text>
               </View>
             ) : null}
-
-            {needsInviteCode && (
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>邀請碼</Text>
-                <View style={styles.inputWrapper}>
-                  <Text style={styles.inputIcon}>🎟️</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={form.inviteCode}
-                    onChangeText={(text) => setForm({ ...form, inviteCode: text })}
-                    placeholder="請輸入邀請碼"
-                    placeholderTextColor="#aaa"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
-                </View>
-                <Text style={styles.inviteHint}>沒有邀請碼？請聯絡客服諮詢</Text>
-              </View>
-            )}
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>電子郵件</Text>
