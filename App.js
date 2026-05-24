@@ -1,7 +1,8 @@
+import { useState, useEffect } from 'react'
 import { NavigationContainer } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { StatusBar } from 'expo-status-bar'
-import { View, Text } from 'react-native'
+import { View, Text, Platform } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import Toast from 'react-native-toast-message'
 import { AuthProvider, useAuth } from './src/context/AuthContext'
@@ -12,6 +13,7 @@ import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen'
 import ResetPasswordScreen from './src/screens/ResetPasswordScreen'
 import DashboardScreen from './src/screens/DashboardScreen'
 import AdminScreen from './src/screens/AdminScreen'
+import InstallScreen from './src/screens/InstallScreen'
 
 const Stack = createNativeStackNavigator()
 const ADMIN_EMAIL = 'simplefinance.com@gmail.com'
@@ -59,6 +61,26 @@ function AppNavigator() {
 }
 
 export default function App() {
+  const [showInstall, setShowInstall] = useState(false)
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') return
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {})
+    }
+
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true
+
+    if (!isStandalone) setShowInstall(true)
+  }, [])
+
+  if (showInstall) {
+    return <InstallScreen onContinue={() => setShowInstall(false)} />
+  }
+
   return (
     <SafeAreaProvider>
       <AuthProvider>
