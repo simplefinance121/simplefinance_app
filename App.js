@@ -72,9 +72,11 @@ export default function App() {
 
     const isStandalone =
       window.matchMedia('(display-mode: standalone)').matches ||
-      window.navigator.standalone === true
+      !!window.navigator.standalone
 
-    if (!isStandalone) setShowInstall(true)
+    const dismissed = localStorage.getItem('sf_install_dismissed') === 'true'
+
+    if (!isStandalone && !dismissed) setShowInstall(true)
   }, [])
 
   if (showInstall) {

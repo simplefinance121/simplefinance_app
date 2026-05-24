@@ -24,6 +24,11 @@ export default function InstallScreen({ onContinue }) {
     return () => window.removeEventListener('beforeinstallprompt', handler)
   }, [])
 
+  const dismiss = () => {
+    localStorage.setItem('sf_install_dismissed', 'true')
+    onContinue()
+  }
+
   const handleInstall = async () => {
     if (!installPrompt) return
     setInstalling(true)
@@ -31,7 +36,7 @@ export default function InstallScreen({ onContinue }) {
       installPrompt.prompt()
       const { outcome } = await installPrompt.userChoice
       if (outcome === 'accepted') {
-        onContinue()
+        dismiss()
       } else {
         setInstallPrompt(null)
       }
@@ -89,7 +94,7 @@ export default function InstallScreen({ onContinue }) {
           </View>
         )}
 
-        <TouchableOpacity style={styles.skipBtn} onPress={onContinue}>
+        <TouchableOpacity style={styles.skipBtn} onPress={dismiss}>
           <Text style={styles.skipText}>先在瀏覽器使用 →</Text>
         </TouchableOpacity>
       </View>
