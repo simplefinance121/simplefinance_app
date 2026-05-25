@@ -28,10 +28,13 @@ export default function AdminScreen() {
   const [transactions, setTransactions] = useState({})
   const [interestRecords, setInterestRecords] = useState({})
   const [referralBonusRecords, setReferralBonusRecords] = useState({})
-  const [txForm, setTxForm] = useState({ type: 'deposit', amount: '', date: '' })
+  const [txForm, setTxForm] = useState({ type: 'deposit', amount: '', date: '', dayOfMonth: '' })
   const [txSaving, setTxSaving] = useState(false)
   const [deleting, setDeleting] = useState(null)
+  const [recurringRules, setRecurringRules] = useState({})
+  const [deletingRecurring, setDeletingRecurring] = useState(null)
   const [currencySaving, setCurrencySaving] = useState(null)
+  const [recalculating, setRecalculating] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [txPage, setTxPage] = useState({})
   const [txFilter, setTxFilter] = useState({})
@@ -82,6 +85,18 @@ export default function AdminScreen() {
     }
   }
 
+  const fetchRecurringRules = async (userId) => {
+    try {
+      const res = await fetch(`${API}/api/admin/users/${userId}/recurring`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setRecurringRules((prev) => ({ ...prev, [userId]: data }))
+      }
+    } catch { /* ignore */ }
+  }
+
   const fetchTransactions = async (userId) => {
     try {
       const [txRes, intRes, refRes] = await Promise.all([
@@ -116,10 +131,11 @@ export default function AdminScreen() {
     } else {
       setExpandedId(userId)
       fetchTransactions(userId)
+      fetchRecurringRules(userId)
       setTxPage((prev) => ({ ...prev, [userId]: 1 }))
       setTxFilter((prev) => ({ ...prev, [userId]: 'deposit' }))
     }
-    setTxForm({ type: 'deposit', amount: '', date: '' })
+    setTxForm({ type: 'deposit', amount: '', date: '', dayOfMonth: '' })
   }
 
   const updateUserAssets = (userId, newAssets) => {
@@ -150,7 +166,70 @@ export default function AdminScreen() {
     }
   }
 
+  const addRecurringRule = async (userId) => {
+    if (!txForm.amount) {
+      Toast.show({ type: 'error', text1: '請填寫金額' })
+      return
+    }
+    const day = Number(txForm.dayOfMonth)
+    if (!txForm.dayOfMonth || isNaN(day) || day < 1 || day > 28) {
+      Toast.show({ type: 'error', text1: '請填寫有效的每月日期（1-28）' })
+      return
+    }
+    const type = txForm.type === 'recurring_deposit' ? 'deposit' : 'withdrawal'
+    setTxSaving(true)
+    try {
+      const res = await fetch(`${API}/api/admin/users/${userId}/recurring`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ type, amount: Number(txForm.amount), dayOfMonth: day }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        Toast.show({ type: 'error', text1: data.message || '新增失敗' })
+        return
+      }
+      await fetchRecurringRules(userId)
+      setTxForm({ type: 'deposit', amount: '', date: '', dayOfMonth: '' })
+      Toast.show({ type: 'success', text1: '定期交易規則已新增' })
+    } catch {
+      Toast.show({ type: 'error', text1: '新增定期交易失敗' })
+    } finally {
+      setTxSaving(false)
+    }
+  }
+
+  const deleteRecurringRule = (ruleId, userId) => {
+    showConfirm('確認', '確定要刪除此定期交易規則嗎？', async () => {
+      setDeletingRecurring(ruleId)
+      try {
+        const res = await fetch(`${API}/api/admin/recurring/${ruleId}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!res.ok) {
+          const data = await res.json()
+          Toast.show({ type: 'error', text1: data.message || '刪除失敗' })
+          return
+        }
+        setRecurringRules((prev) => ({
+          ...prev,
+          [userId]: (prev[userId] || []).filter((r) => r._id !== ruleId),
+        }))
+        Toast.show({ type: 'success', text1: '定期交易規則已刪除' })
+      } catch {
+        Toast.show({ type: 'error', text1: '刪除定期交易失敗' })
+      } finally {
+        setDeletingRecurring(null)
+      }
+    })
+  }
+
   const addTransaction = async (userId) => {
+    if (txForm.type === 'recurring_deposit' || txForm.type === 'recurring_withdrawal') {
+      await addRecurringRule(userId)
+      return
+    }
     if (!txForm.amount || !txForm.date) {
       Toast.show({ type: 'error', text1: '請填寫金額和日期' })
       return
@@ -181,11 +260,32 @@ export default function AdminScreen() {
         body: JSON.stringify({ assets: newAssets }),
       })
       await fetchTransactions(userId)
-      setTxForm({ type: 'deposit', amount: '', date: '' })
+      setTxForm({ type: 'deposit', amount: '', date: '', dayOfMonth: '' })
     } catch {
       Toast.show({ type: 'error', text1: '新增交易記錄失敗' })
     } finally {
       setTxSaving(false)
+    }
+  }
+
+  const recalculateAllInterest = async () => {
+    setRecalculating(true)
+    try {
+      const res = await fetch(`${API}/api/admin/recalculate-all-interest`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      if (res.ok) {
+        Toast.show({ type: 'success', text1: data.message || '利息重新計算完成' })
+        await fetchUsers()
+      } else {
+        Toast.show({ type: 'error', text1: data.message || '重新計算失敗' })
+      }
+    } catch {
+      Toast.show({ type: 'error', text1: '重新計算利息失敗' })
+    } finally {
+      setRecalculating(false)
     }
   }
 
@@ -389,13 +489,22 @@ export default function AdminScreen() {
       <View style={styles.content}>
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        <TextInput
-          style={styles.searchInput}
-          placeholder="搜尋用戶姓名或電子郵件..."
-          placeholderTextColor={colors.textMuted}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
+        <View style={styles.searchRow}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="搜尋用戶姓名或電子郵件..."
+            placeholderTextColor={colors.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          <TouchableOpacity
+            style={[styles.recalcBtn, recalculating && { opacity: 0.6 }]}
+            onPress={recalculateAllInterest}
+            disabled={recalculating}
+          >
+            <Text style={styles.recalcBtnText}>{recalculating ? '計算中...' : '重算利息'}</Text>
+          </TouchableOpacity>
+        </View>
 
         {filteredUsers.map((u) => (
           <View key={u._id} style={styles.userCard}>
@@ -426,7 +535,7 @@ export default function AdminScreen() {
             </View>
 
             <View style={styles.currencyRow}>
-              {['USD', 'AUD', 'TWD'].map((c) => (
+              {['USD', 'AUD', 'TWD', 'JPY'].map((c) => (
                 <TouchableOpacity
                   key={c}
                   style={[styles.currencyBtn, (u.currency || 'USD') === c && styles.currencyBtnActive]}
@@ -495,18 +604,20 @@ export default function AdminScreen() {
                 <Text style={styles.expandedTitle}>新增入金/出金紀錄</Text>
                 <View style={styles.txFormRow}>
                   <View style={styles.txTypeRow}>
-                    <TouchableOpacity
-                      style={[styles.txTypeBtn, txForm.type === 'deposit' && styles.txTypeBtnActive]}
-                      onPress={() => setTxForm({ ...txForm, type: 'deposit' })}
-                    >
-                      <Text style={[styles.txTypeBtnText, txForm.type === 'deposit' && styles.txTypeBtnTextActive]}>入金</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.txTypeBtn, txForm.type === 'withdrawal' && styles.txTypeBtnActive]}
-                      onPress={() => setTxForm({ ...txForm, type: 'withdrawal' })}
-                    >
-                      <Text style={[styles.txTypeBtnText, txForm.type === 'withdrawal' && styles.txTypeBtnTextActive]}>出金</Text>
-                    </TouchableOpacity>
+                    {[
+                      { key: 'deposit', label: '入金' },
+                      { key: 'withdrawal', label: '出金' },
+                      { key: 'recurring_deposit', label: '定期入金' },
+                      { key: 'recurring_withdrawal', label: '定期出金' },
+                    ].map((t) => (
+                      <TouchableOpacity
+                        key={t.key}
+                        style={[styles.txTypeBtn, txForm.type === t.key && styles.txTypeBtnActive]}
+                        onPress={() => setTxForm({ ...txForm, type: t.key, date: '', dayOfMonth: '' })}
+                      >
+                        <Text style={[styles.txTypeBtnText, txForm.type === t.key && styles.txTypeBtnTextActive]}>{t.label}</Text>
+                      </TouchableOpacity>
+                    ))}
                   </View>
                   <TextInput
                     style={styles.txInput}
@@ -516,21 +627,80 @@ export default function AdminScreen() {
                     onChangeText={(t) => setTxForm({ ...txForm, amount: t })}
                     keyboardType="numeric"
                   />
-                  <TextInput
-                    style={styles.txInput}
-                    placeholder="日期 (YYYY-MM-DD)"
-                    placeholderTextColor={colors.textMuted}
-                    value={txForm.date}
-                    onChangeText={(t) => setTxForm({ ...txForm, date: t })}
-                  />
+                  {(txForm.type === 'recurring_deposit' || txForm.type === 'recurring_withdrawal') ? (
+                    <TextInput
+                      style={styles.txInput}
+                      placeholder="每月幾號 (1-28)"
+                      placeholderTextColor={colors.textMuted}
+                      value={txForm.dayOfMonth}
+                      onChangeText={(t) => setTxForm({ ...txForm, dayOfMonth: t })}
+                      keyboardType="numeric"
+                    />
+                  ) : (
+                    <TextInput
+                      style={styles.txInput}
+                      placeholder="日期 (YYYY-MM-DD)"
+                      placeholderTextColor={colors.textMuted}
+                      value={txForm.date}
+                      onChangeText={(t) => setTxForm({ ...txForm, date: t })}
+                    />
+                  )}
                   <TouchableOpacity
                     style={[styles.saveBtn, txSaving && { opacity: 0.6 }]}
                     onPress={() => addTransaction(u._id)}
                     disabled={txSaving}
                   >
-                    <Text style={styles.saveBtnText}>{txSaving ? '新增中...' : '新增'}</Text>
+                    <Text style={styles.saveBtnText}>
+                      {txSaving ? '新增中...' : (txForm.type === 'recurring_deposit' || txForm.type === 'recurring_withdrawal') ? '新增定期' : '新增'}
+                    </Text>
                   </TouchableOpacity>
                 </View>
+
+                {(recurringRules[u._id] || []).length > 0 && (
+                  <View style={styles.recurringSection}>
+                    <Text style={styles.expandedTitle}>定期交易規則</Text>
+                    {(recurringRules[u._id] || []).map((rule) => (
+                      <View key={rule._id} style={styles.recurringRow}>
+                        <Text style={[styles.txType, rule.type === 'deposit' ? styles.depositText : styles.withdrawalText]}>
+                          {rule.type === 'deposit' ? '定期入金' : '定期出金'}
+                        </Text>
+                        <Text style={styles.recurringAmount}>{fmtAmount(rule.amount)}</Text>
+                        <Text style={styles.recurringDay}>每月 {rule.dayOfMonth} 號</Text>
+                        <TouchableOpacity
+                          style={styles.deleteBtn}
+                          onPress={() => deleteRecurringRule(rule._id, u._id)}
+                          disabled={deletingRecurring === rule._id}
+                        >
+                          <Text style={styles.deleteBtnText}>{deletingRecurring === rule._id ? '...' : '刪除'}</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {(() => {
+                  const allTxs = transactions[u._id] || []
+                  const totalDeposits = allTxs.filter(t => t.type === 'deposit').reduce((s, t) => s + t.amount, 0)
+                  const totalWithdrawals = allTxs.filter(t => t.type === 'withdrawal').reduce((s, t) => s + t.amount, 0)
+                  const totalInterest = (interestRecords[u._id] || []).reduce((s, t) => s + t.amount, 0)
+                  const totalReferral = (referralBonusRecords[u._id] || []).reduce((s, t) => s + t.amount, 0)
+                  return (
+                    <View style={styles.totalsRow}>
+                      <View style={styles.totalsItem}>
+                        <Text style={styles.totalsLabel}>總資金</Text>
+                        <Text style={styles.totalsValue}>{fmtAmount(totalDeposits - totalWithdrawals)}</Text>
+                      </View>
+                      <View style={styles.totalsItem}>
+                        <Text style={styles.totalsLabel}>總利息</Text>
+                        <Text style={[styles.totalsValue, styles.interestText]}>{fmtAmount(totalInterest)}</Text>
+                      </View>
+                      <View style={styles.totalsItem}>
+                        <Text style={styles.totalsLabel}>總推薦獎勵</Text>
+                        <Text style={[styles.totalsValue, styles.referralText]}>{fmtAmount(totalReferral)}</Text>
+                      </View>
+                    </View>
+                  )
+                })()}
 
                 <View style={styles.txFilterRow}>
                   {[
@@ -615,12 +785,18 @@ export default function AdminScreen() {
                       ))}
                       {totalPages > 1 && (
                         <View style={styles.paginationRow}>
+                          <TouchableOpacity disabled={page <= 1} onPress={() => setTxPage((prev) => ({ ...prev, [u._id]: 1 }))}>
+                            <Text style={[styles.pageBtnSmall, page <= 1 && { color: colors.textMuted }]}>首頁</Text>
+                          </TouchableOpacity>
                           <TouchableOpacity disabled={page <= 1} onPress={() => setTxPage((prev) => ({ ...prev, [u._id]: page - 1 }))}>
                             <Text style={[styles.pageBtn, page <= 1 && { color: colors.textMuted }]}>‹</Text>
                           </TouchableOpacity>
                           <Text style={styles.pageInfo}>{page} / {totalPages}</Text>
                           <TouchableOpacity disabled={page >= totalPages} onPress={() => setTxPage((prev) => ({ ...prev, [u._id]: page + 1 }))}>
                             <Text style={[styles.pageBtn, page >= totalPages && { color: colors.textMuted }]}>›</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity disabled={page >= totalPages} onPress={() => setTxPage((prev) => ({ ...prev, [u._id]: totalPages }))}>
+                            <Text style={[styles.pageBtnSmall, page >= totalPages && { color: colors.textMuted }]}>末頁</Text>
                           </TouchableOpacity>
                         </View>
                       )}
@@ -822,17 +998,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 12,
   },
+  searchRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
   searchInput: {
+    flex: 1,
     backgroundColor: colors.white,
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 15,
-    marginBottom: 16,
     borderWidth: 1,
     borderColor: colors.border,
     color: colors.text,
   },
+  recalcBtn: {
+    backgroundColor: '#0ea5e9',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  recalcBtnText: { color: colors.white, fontSize: 13, fontWeight: '600' },
   userCard: {
     backgroundColor: colors.white,
     borderRadius: 12,
@@ -990,9 +1179,39 @@ const styles = StyleSheet.create({
   },
   deleteBtnText: { color: colors.error, fontSize: 12 },
   deletePlaceholder: { width: 0 },
-  paginationRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 12, gap: 16 },
+  paginationRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 12, gap: 12, flexWrap: 'wrap' },
   pageBtn: { fontSize: 18, color: colors.primary, fontWeight: '600' },
+  pageBtnSmall: { fontSize: 13, color: colors.primary, fontWeight: '600' },
   pageInfo: { fontSize: 14, color: colors.textSecondary },
+  totalsRow: { flexDirection: 'row', gap: 12, marginBottom: 12, flexWrap: 'wrap' },
+  totalsItem: {
+    flex: 1,
+    backgroundColor: colors.backgroundGray,
+    borderRadius: 8,
+    padding: 10,
+    alignItems: 'center',
+    minWidth: 80,
+  },
+  totalsLabel: { fontSize: 11, color: colors.textMuted, marginBottom: 4 },
+  totalsValue: { fontSize: 14, fontWeight: '700', color: colors.text },
+  recurringSection: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+    marginBottom: 8,
+  },
+  recurringRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+    flexWrap: 'wrap',
+  },
+  recurringAmount: { fontSize: 13, color: colors.text, flex: 1 },
+  recurringDay: { fontSize: 13, color: colors.textSecondary },
   emptyText: { fontSize: 14, color: colors.textMuted, textAlign: 'center', paddingVertical: 16 },
   logoutBtn: {
     borderWidth: 1.5,
