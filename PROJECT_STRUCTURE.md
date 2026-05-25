@@ -166,6 +166,7 @@ Runs after `expo export --platform web`:
   - Scroll disabled while interacting with chart (native); mouse events on web
   - Y-axis nice-number scaling; X-axis ~5 date labels
 - Transaction records (入金/出金), interest records (每日利息), referral bonus records — all paginated 7/page with 首頁/末頁 controls
+- **Referral code card** — shows `user.referralCode` with copy-to-clipboard button and cumulative `user.referralEarnings`; hidden in admin view and when user has no code
 - Logout button (hidden in admin view)
 
 ### AdminScreen (`AdminScreen.js`)

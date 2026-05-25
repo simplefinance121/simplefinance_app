@@ -31,6 +31,7 @@ Live: **https://simplefinance-app.vercel.app**
 - **Transaction records** (入金/出金) — paginated, 7 per page
 - **Daily interest records** — paginated, 7 per page
 - **Referral bonus earnings** — passive history of bonuses from referrals
+- **Referral code card** — shows the user's referral code with a one-tap copy button and cumulative referral earnings; visible to all users on the Dashboard
 - **Profile page** — read-only account info (currency, interest rate, referral code with copy button, referral earnings); editable name and email saved to backend immediately
 - No persistent sessions — closing the app logs out; Remember Me only pre-fills the form
 
