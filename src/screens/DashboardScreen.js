@@ -344,6 +344,11 @@ export default function DashboardScreen() {
           )}
         </View>
 
+        {/* Referral Code (hidden in admin view) */}
+        {!isAdminView && user.referralCode && (
+          <ReferralCard user={user} />
+        )}
+
         {/* Logout (hidden in admin view) */}
         {!isAdminView && (
           <TouchableOpacity style={styles.logoutBtn} onPress={() => logout()}>
@@ -354,6 +359,53 @@ export default function DashboardScreen() {
     </ScrollView>
   )
 }
+
+function ReferralCard({ user }) {
+  const [copied, setCopied] = useState(false)
+  const fmt = (v) => {
+    const n = Number(v)
+    if (n < 1) return `$${n.toFixed(2)}`
+    return `$${Math.round(n).toLocaleString()}`
+  }
+
+  const copy = () => {
+    if (Platform.OS === 'web' && navigator.clipboard) {
+      navigator.clipboard.writeText(user.referralCode).then(() => {
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      })
+    } else {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
+  return (
+    <View style={styles.card}>
+      <Text style={styles.cardTitle}>我的推薦碼</Text>
+      <View style={refStyles.codeRow}>
+        <Text style={refStyles.code}>{user.referralCode}</Text>
+        <TouchableOpacity style={refStyles.copyBtn} onPress={copy}>
+          <Text style={refStyles.copyBtnText}>{copied ? '已複製' : '複製'}</Text>
+        </TouchableOpacity>
+      </View>
+      <Text style={refStyles.note}>分享推薦碼給朋友，他們投資後您將獲得推薦獎勵。</Text>
+      {user.referralEarnings > 0 && (
+        <Text style={refStyles.earnings}>累計推薦獎勵：<Text style={refStyles.earningsValue}>+{fmt(user.referralEarnings)}</Text></Text>
+      )}
+    </View>
+  )
+}
+
+const refStyles = StyleSheet.create({
+  codeRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
+  code: { fontSize: 20, fontWeight: '800', color: colors.primary, letterSpacing: 2, flex: 1 },
+  copyBtn: { backgroundColor: colors.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
+  copyBtnText: { color: colors.white, fontSize: 13, fontWeight: '700' },
+  note: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
+  earnings: { fontSize: 14, color: colors.textSecondary, marginTop: 8 },
+  earningsValue: { fontWeight: '700', color: '#f59e0b' },
+})
 
 function niceNum(range, round) {
   const exp = Math.floor(Math.log10(range))
