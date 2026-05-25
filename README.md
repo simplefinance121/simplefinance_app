@@ -20,6 +20,7 @@ Live: **https://simplefinance-app.vercel.app**
 - **Install screen** shown on first browser visit (before login)
 - Android / Chrome: one-tap native install prompt (`beforeinstallprompt`)
 - iOS / Safari: step-by-step Add to Home Screen instructions
+- iOS / Chrome: message directing the user to open in Safari instead (Chrome on iOS cannot install PWAs)
 - Skipped automatically if app is already running in standalone mode
 - "先在瀏覽器使用" permanently dismisses; deleting the app from home screen will show the prompt again on next visit
 
@@ -30,14 +31,16 @@ Live: **https://simplefinance-app.vercel.app**
 - **Transaction records** (入金/出金) — paginated, 7 per page
 - **Daily interest records** — paginated, 7 per page
 - **Referral bonus earnings** — passive history of bonuses from referrals
-- **Profile page** — change name or email; saved to backend immediately
+- **Profile page** — read-only account info (currency, interest rate, referral code with copy button, referral earnings); editable name and email saved to backend immediately
 - No persistent sessions — closing the app logs out; Remember Me only pre-fills the form
 
 ### Admin Panel
 - User list with search (by name or email), sorted by assets descending
-- Edit assets, currency, per-user annual interest rate, per-user referral bonus rate inline
+- Edit assets, currency (USD/AUD/TWD/JPY), per-user annual interest rate, per-user referral bonus rate inline
+- **重算利息** button — recalculates interest for all users at once
 - Add / delete transactions; assets in DB **auto-sync** after every add/delete
-- Expandable per-user transaction list with filter tabs (入金/出金/利息/推薦獎勵), paginated 10 per page
+- **Recurring transactions** (定期入金/出金) — set a day-of-month (1–28); active rules displayed with delete buttons
+- Expandable per-user section (出/入金) with transaction summary totals (總資金/總利息/總推薦獎勵), filter tabs, paginated list (首頁/末頁), delete buttons
 - View any user's dashboard without logging in as them
 - Referral modal — view who referred whom, set referral bonus rate
 - Delete user — cascades to all related records

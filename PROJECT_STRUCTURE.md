@@ -140,8 +140,9 @@ Runs after `expo export --platform web`:
 ### InstallScreen (`InstallScreen.js`)
 - Shown before login when app is opened in browser and not yet installed
 - Displays app icon, name, tagline
-- Android: "📲 立即安裝" button → triggers `beforeinstallprompt.prompt()`
-- iOS: numbered step guide with highlighted action labels
+- Android / Chrome: "📲 立即安裝" button → triggers `beforeinstallprompt.prompt()`
+- iOS / Safari: numbered step guide with highlighted action labels
+- iOS / Chrome (`CriOS` in UA): "請使用 Safari 開啟" message — Chrome on iOS cannot install PWAs
 - Desktop: message to open on a phone
 - "先在瀏覽器使用 →" skips permanently (sets localStorage flag)
 
@@ -169,22 +170,32 @@ Runs after `expo export --platform web`:
 
 ### AdminScreen (`AdminScreen.js`)
 - User list: search by name/email, sorted by assets descending
-- Per-user: edit assets, currency selector (USD/AUD/TWD), interest rate modal, referral modal, view dashboard, expand details, delete user
-- **Expanded section:** add transaction form (入金/出金 + amount + date), filter tabs, paginated list, delete buttons
+- **重算利息** button — `POST /api/admin/recalculate-all-interest`, refreshes user list on success
+- Per-user: edit assets, currency selector (USD/AUD/TWD/JPY), interest rate modal, referral modal, view dashboard, 出/入金 expand, delete user
+- **Expanded section (出/入金):**
+  - Add form supports 入金 / 出金 / 定期入金 / 定期出金; recurring types show day-of-month input (1–28) instead of date
+  - Active recurring rules list with delete buttons
+  - Summary totals: 總資金 / 總利息 / 總推薦獎勵
+  - Filter tabs (入金/出金/利息/推薦獎勵), paginated 10/page with 首頁/末頁
+  - Delete buttons for 入金/出金 records
 - **Auto-asset sync:** after every transaction add/delete, assets are recalculated and PUT to `/api/admin/users/:id/assets`
-- **Confirm modal** replaces native `Alert` (web compatible) for delete confirmation dialogs
+- **Confirm modal** replaces native `Alert` (web compatible) for all delete confirmations
 - Admin endpoints used:
   - `GET /api/admin/users`
   - `PUT /api/admin/users/:id/assets`, `/currency`, `/interest-rate`, `/referral-bonus-rate`
   - `GET /api/admin/users/:id/transactions`, `/interest`, `/referral-bonus`, `/referrals`, `/dashboard`
   - `POST /api/admin/users/:id/transactions`
   - `DELETE /api/admin/transactions/:txId`
+  - `GET /api/admin/users/:id/recurring`
+  - `POST /api/admin/users/:id/recurring`
+  - `DELETE /api/admin/recurring/:ruleId`
+  - `POST /api/admin/recalculate-all-interest`
   - `DELETE /api/admin/users/:id`
 
 ### ProfileScreen (`ProfileScreen.js`)
 - Accessible via ⚙ 個人資料 from the Dashboard header
-- Displays current name and email in editable fields
-- Save button activates only when a field has changed
+- **帳戶資訊 card** (read-only): currency, annual interest rate, referral code with copy-to-clipboard button, cumulative referral earnings (shown only if > 0)
+- **修改資料 card** (editable): name and email fields; save button activates only when a field has changed
 - `PUT /api/auth/me` — backend validates, checks email uniqueness, updates MongoDB record
 - On success: updates in-memory auth context (`updateUser`) and navigates back
 

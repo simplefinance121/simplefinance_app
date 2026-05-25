@@ -41,7 +41,7 @@ Vercel auto-deploys on every push to `main`. Manual deploy: `cd dist && vercel d
 
 **Post-build script** (`scripts/postbuild-web.js`): runs after `expo export --platform web` to inject PWA meta tags (manifest link, Apple tags, iOS auto-zoom fix CSS) into `dist/index.html` and copy `icon.png` + `public/` into `dist/`.
 
-**Install screen** (`InstallScreen.js`): shown when `display-mode !== standalone`. Sets `sf_install_dismissed` in localStorage only when user explicitly skips — successful install or deletion/reinstall does not set this flag, so the prompt reappears naturally.
+**Install screen** (`InstallScreen.js`): shown when `display-mode !== standalone`. Three branches: Android (`beforeinstallprompt` captured → install button), iOS Safari (3-step guide), iOS Chrome (`CriOS` in UA → "please use Safari" message — Chrome on iOS cannot install PWAs). Sets `sf_install_dismissed` in localStorage only when user explicitly skips — successful install or deletion/reinstall does not set this flag, so the prompt reappears naturally.
 
 ## Known Behaviours / Gotchas
 
@@ -56,6 +56,8 @@ Vercel auto-deploys on every push to `main`. Manual deploy: `cd dist && vercel d
 **PanResponder on web:** `DashboardScreen`'s chart uses `PanResponder` on native and mouse events (`onMouseMove`, `onMouseLeave`) on web. The `panResponder` object is conditionally created — `Platform.OS === 'web'` returns `{ panHandlers: {} }`. Don't collapse this back into a single `PanResponder.create()` call.
 
 **Alert on web:** `AdminScreen` uses a custom confirm `Modal` instead of `Alert.alert()` because `Alert` doesn't exist on web. Don't replace this modal with `Alert`.
+
+**Recurring transactions:** `AdminScreen` sends `POST /api/admin/users/:id/recurring` with `{ type, amount, dayOfMonth }`. The type is always `'deposit'` or `'withdrawal'` (the frontend `txForm.type` values `recurring_deposit`/`recurring_withdrawal` are mapped before the request). Recurring rules are fetched separately from transactions and stored in `recurringRules` state keyed by userId. Don't merge them into the `transactions` state.
 
 **iOS auto-zoom:** Input fields get font-size forced to 16px on iOS via a CSS rule injected by `scripts/postbuild-web.js`. This prevents Safari's auto-zoom on focus. Don't remove this from the post-build script.
 
@@ -77,3 +79,5 @@ Vercel auto-deploys on every push to `main`. Manual deploy: `cd dist && vercel d
 - Don't replace the custom confirm modal in AdminScreen with `Alert.alert()`
 - Don't collapse `PanResponder` in DashboardScreen — it must stay platform-conditional
 - Don't set `sf_install_dismissed` on successful install — only on explicit skip
+- Don't merge recurring rules into the `transactions` state — they live in `recurringRules` keyed by userId
+- Don't remove the "請使用 Safari 開啟" branch for iOS Chrome (`CriOS`) — Chrome on iOS cannot install PWAs
