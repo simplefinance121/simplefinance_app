@@ -577,7 +577,7 @@ export default function AdminScreen() {
                     <Text style={styles.referralBtnText}>推薦制度</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.expandBtn} onPress={() => toggleExpand(u._id)}>
-                    <Text style={styles.expandBtnText}>{expandedId === u._id ? '收起' : '詳細資料'}</Text>
+                    <Text style={styles.expandBtnText}>{expandedId === u._id ? '收起' : '出/入金'}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.interestBtn}

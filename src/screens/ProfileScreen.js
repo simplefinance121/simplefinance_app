@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ScrollView, View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native'
+import { ScrollView, View, Text, TextInput, TouchableOpacity, ActivityIndicator, Platform, StyleSheet } from 'react-native'
 import { useNavigation } from '@react-navigation/native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Toast from 'react-native-toast-message'
@@ -15,6 +15,7 @@ export default function ProfileScreen() {
   const [name, setName] = useState(user?.name || '')
   const [email, setEmail] = useState(user?.email || '')
   const [saving, setSaving] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   const hasChanges = name.trim() !== user?.name || email.trim() !== user?.email
 
@@ -49,6 +50,18 @@ export default function ProfileScreen() {
     }
   }
 
+  const copyReferralCode = () => {
+    if (Platform.OS === 'web' && navigator.clipboard) {
+      navigator.clipboard.writeText(user.referralCode).then(() => {
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      })
+    } else {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
       <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
@@ -56,11 +69,49 @@ export default function ProfileScreen() {
           <Text style={styles.backBtnText}>← 返回</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>個人資料</Text>
-        <Text style={styles.headerSub}>修改您的姓名或電子郵件</Text>
+        <Text style={styles.headerSub}>查看帳戶資訊或修改姓名／電子郵件</Text>
       </View>
 
       <View style={styles.content}>
+
+        {/* Account info — read-only */}
         <View style={styles.card}>
+          <Text style={styles.cardTitle}>帳戶資訊</Text>
+
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>幣別</Text>
+            <Text style={styles.infoValue}>{user?.currency || 'USD'}</Text>
+          </View>
+
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>年利率</Text>
+            <Text style={styles.infoValue}>{user?.interestRate ?? 7}%</Text>
+          </View>
+
+          {user?.referralCode ? (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>我的推薦碼</Text>
+              <View style={styles.referralRow}>
+                <Text style={styles.referralCode}>{user.referralCode}</Text>
+                <TouchableOpacity style={styles.copyBtn} onPress={copyReferralCode}>
+                  <Text style={styles.copyBtnText}>{copied ? '已複製' : '複製'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : null}
+
+          {user?.referralEarnings > 0 ? (
+            <View style={[styles.infoRow, { marginBottom: 0 }]}>
+              <Text style={styles.infoLabel}>累計推薦獎勵</Text>
+              <Text style={[styles.infoValue, { color: '#f59e0b' }]}>+${Math.round(user.referralEarnings).toLocaleString()}</Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* Editable fields */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>修改資料</Text>
+
           <View style={styles.field}>
             <Text style={styles.label}>姓名</Text>
             <TextInput
@@ -133,6 +184,39 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
+  cardTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 16,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.backgroundGray,
+    marginBottom: 4,
+  },
+  infoLabel: { fontSize: 14, color: colors.textSecondary },
+  infoValue: { fontSize: 15, fontWeight: '600', color: colors.text },
+  referralRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  referralCode: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.primary,
+    letterSpacing: 1,
+  },
+  copyBtn: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  copyBtnText: { color: colors.white, fontSize: 12, fontWeight: '600' },
   field: { marginBottom: 20 },
   label: {
     fontSize: 12,
