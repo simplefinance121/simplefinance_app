@@ -170,6 +170,7 @@ Runs after `expo export --platform web`:
 - Logout button (hidden in admin view)
 
 ### AdminScreen (`AdminScreen.js`)
+- **⚙ 登出** button top-right of the dark header (same style as Dashboard's profile button)
 - User list: search by name/email, sorted by assets descending
 - **重算利息** button — `POST /api/admin/recalculate-all-interest`, refreshes user list on success
 - Per-user: edit assets, currency selector (USD/AUD/TWD/JPY), interest rate modal, referral modal, view dashboard, 出/入金 expand, delete user
@@ -180,10 +181,12 @@ Runs after `expo export --platform web`:
   - Filter tabs (入金/出金/利息/推薦獎勵), paginated 10/page with 首頁/末頁
   - Delete buttons for 入金/出金 records
 - **Auto-asset sync:** after every transaction add/delete, assets are recalculated and PUT to `/api/admin/users/:id/assets`
+- **Referral modal:** shows two tables — 被推薦人 (people this user referred, each with their own editable bonus rate) and 推薦人 (who referred this user). Bonus rate is stored on the **referee**, not the referrer; each row has its own inline 修改/儲存/取消 controls. `PUT /api/admin/users/:refereeId/referral-bonus-rate` targets the referee's ID.
 - **Confirm modal** replaces native `Alert` (web compatible) for all delete confirmations
 - Admin endpoints used:
   - `GET /api/admin/users`
-  - `PUT /api/admin/users/:id/assets`, `/currency`, `/interest-rate`, `/referral-bonus-rate`
+  - `PUT /api/admin/users/:id/assets`, `/currency`, `/interest-rate`
+  - `PUT /api/admin/users/:refereeId/referral-bonus-rate` (targets the **referee**, not the referrer)
   - `GET /api/admin/users/:id/transactions`, `/interest`, `/referral-bonus`, `/referrals`, `/dashboard`
   - `POST /api/admin/users/:id/transactions`
   - `DELETE /api/admin/transactions/:txId`
@@ -250,4 +253,5 @@ vercel deploy
 - All API calls use `Authorization: Bearer <token>` header
 - Admin-only routes additionally check `req.user.email === 'simplefinance.com@gmail.com'`
 - Interest is calculated as `balance * (annualRate / 100) / 365` (simple daily) by the backend
+- Referral bonus is calculated as `balance * (referralBonusRate / 100) / 365` daily — balance-based, not interest-based; rate is stored on the referred user (referee) and defaults to 10%
 - New deposits are excluded from interest for 2 days; deposit dates are normalized to Taiwan midnight (UTC+8)
