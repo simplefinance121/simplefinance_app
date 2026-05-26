@@ -380,7 +380,7 @@ export default function AdminScreen() {
   const openReferralModal = async (user) => {
     setReferralModal(user)
     setReferralData(null)
-    setEditingBonusRate(false)
+    setEditingBonusRate(null)
     setReferralLoading(true)
     try {
       const res = await fetch(`${API}/api/admin/users/${user._id}/referrals`, {
@@ -400,14 +400,14 @@ export default function AdminScreen() {
     }
   }
 
-  const saveBonusRate = async () => {
+  const saveBonusRate = async (refereeId) => {
     if (bonusRateValue === '' || isNaN(Number(bonusRateValue))) {
       Toast.show({ type: 'error', text1: '請輸入有效的百分比' })
       return
     }
     setBonusRateSaving(true)
     try {
-      const res = await fetch(`${API}/api/admin/users/${referralModal._id}/referral-bonus-rate`, {
+      const res = await fetch(`${API}/api/admin/users/${refereeId}/referral-bonus-rate`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ rate: Number(bonusRateValue) }),
@@ -419,10 +419,9 @@ export default function AdminScreen() {
       }
       setReferralData((prev) => ({
         ...prev,
-        referralBonusRate: Number(bonusRateValue),
-        referees: prev.referees.map((r) => ({ ...r, bonusPercent: Number(bonusRateValue) })),
+        referees: prev.referees.map((r) => r._id === refereeId ? { ...r, bonusPercent: Number(bonusRateValue) } : r),
       }))
-      setEditingBonusRate(false)
+      setEditingBonusRate(null)
       Toast.show({ type: 'success', text1: '推薦獎勵百分比已更新' })
     } catch {
       Toast.show({ type: 'error', text1: '更新推薦獎勵百分比失敗' })
@@ -482,6 +481,9 @@ export default function AdminScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
       <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
+        <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
+          <Text style={styles.logoutBtnText}>⚙ 登出</Text>
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>管理後台</Text>
         <Text style={styles.headerSubtitle}>管理所有用戶的資產數據</Text>
       </View>
@@ -835,52 +837,55 @@ export default function AdminScreen() {
                 <ActivityIndicator color={colors.primary} style={{ marginVertical: 24 }} />
               ) : referralData ? (
                 <>
-                  <View style={styles.bonusRateRow}>
-                    <Text style={styles.bonusRateLabel}>推薦獎勵%數：</Text>
-                    {editingBonusRate ? (
-                      <View style={styles.bonusRateEdit}>
-                        <TextInput
-                          style={styles.bonusRateInput}
-                          value={bonusRateValue}
-                          onChangeText={setBonusRateValue}
-                          keyboardType="numeric"
-                          autoFocus
-                        />
-                        <Text style={styles.bonusRatePercent}>%</Text>
-                        <TouchableOpacity style={styles.saveBtn} onPress={saveBonusRate} disabled={bonusRateSaving}>
-                          <Text style={styles.saveBtnText}>{bonusRateSaving ? '儲存中...' : '儲存'}</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.cancelBtn} onPress={() => setEditingBonusRate(false)} disabled={bonusRateSaving}>
-                          <Text style={styles.cancelBtnText}>取消</Text>
-                        </TouchableOpacity>
-                      </View>
-                    ) : (
-                      <View style={styles.bonusRateDisplay}>
-                        <Text style={styles.bonusRateValue}>{referralData.referralBonusRate}%</Text>
-                        <TouchableOpacity
-                          style={styles.smallEditBtn}
-                          onPress={() => {
-                            setEditingBonusRate(true)
-                            setBonusRateValue(String(referralData.referralBonusRate))
-                          }}
-                        >
-                          <Text style={styles.smallEditBtnText}>修改</Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
-                  </View>
-
                   <Text style={styles.modalSubtitle}>被推薦人</Text>
                   {referralData.referees.length > 0 ? (
                     <View style={styles.modalTable}>
                       <View style={styles.modalTableHeader}>
-                        <Text style={[styles.modalTableHeaderText, { flex: 1 }]}>被推薦人名</Text>
-                        <Text style={[styles.modalTableHeaderText, { flex: 1, textAlign: 'right' }]}>獎勵%數</Text>
+                        <Text style={[styles.modalTableHeaderText, { flex: 2 }]}>被推薦人名</Text>
+                        <Text style={[styles.modalTableHeaderText, { flex: 1, textAlign: 'center' }]}>獎勵%數</Text>
+                        <Text style={[styles.modalTableHeaderText, { flex: 1, textAlign: 'right' }]}>操作</Text>
                       </View>
-                      {referralData.referees.map((r, i) => (
-                        <View key={i} style={styles.modalTableRow}>
-                          <Text style={[styles.modalTableCell, { flex: 1 }]}>{r.name}</Text>
-                          <Text style={[styles.modalTableCell, { flex: 1, textAlign: 'right' }]}>{r.bonusPercent}%</Text>
+                      {referralData.referees.map((r) => (
+                        <View key={r._id} style={styles.modalTableRow}>
+                          <Text style={[styles.modalTableCell, { flex: 2 }]}>{r.name}</Text>
+                          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                            {editingBonusRate === r._id ? (
+                              <View style={styles.bonusRateEdit}>
+                                <TextInput
+                                  style={styles.bonusRateInput}
+                                  value={bonusRateValue}
+                                  onChangeText={setBonusRateValue}
+                                  keyboardType="numeric"
+                                  autoFocus
+                                />
+                                <Text style={styles.bonusRatePercent}>%</Text>
+                              </View>
+                            ) : (
+                              <Text style={styles.modalTableCell}>{r.bonusPercent}%</Text>
+                            )}
+                          </View>
+                          <View style={{ flex: 1, alignItems: 'flex-end', justifyContent: 'center', gap: 4 }}>
+                            {editingBonusRate === r._id ? (
+                              <>
+                                <TouchableOpacity style={styles.saveBtn} onPress={() => saveBonusRate(r._id)} disabled={bonusRateSaving}>
+                                  <Text style={styles.saveBtnText}>{bonusRateSaving ? '...' : '儲存'}</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity style={styles.cancelBtn} onPress={() => setEditingBonusRate(null)} disabled={bonusRateSaving}>
+                                  <Text style={styles.cancelBtnText}>取消</Text>
+                                </TouchableOpacity>
+                              </>
+                            ) : (
+                              <TouchableOpacity
+                                style={styles.smallEditBtn}
+                                onPress={() => {
+                                  setEditingBonusRate(r._id)
+                                  setBonusRateValue(String(r.bonusPercent))
+                                }}
+                              >
+                                <Text style={styles.smallEditBtnText}>修改</Text>
+                              </TouchableOpacity>
+                            )}
+                          </View>
                         </View>
                       ))}
                     </View>
@@ -987,6 +992,15 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 30,
   },
+  logoutBtn: {
+    alignSelf: 'flex-end',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginBottom: 12,
+  },
+  logoutBtnText: { color: '#a8b2d1', fontSize: 13, fontWeight: '600' },
   headerTitle: { color: colors.white, fontSize: 24, fontWeight: '700', marginBottom: 4 },
   headerSubtitle: { color: '#a8b2d1', fontSize: 14 },
   content: { padding: 16 },
