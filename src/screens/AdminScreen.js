@@ -1100,13 +1100,12 @@ const styles = StyleSheet.create({
   },
   referralBtnText: { color: colors.white, fontSize: 13, fontWeight: '600' },
   expandBtn: {
-    borderWidth: 1,
-    borderColor: colors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 6,
   },
-  expandBtnText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
+  expandBtnText: { color: colors.white, fontSize: 13, fontWeight: '600' },
   interestBtn: {
     backgroundColor: '#8b5cf6',
     paddingHorizontal: 14,
