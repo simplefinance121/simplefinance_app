@@ -481,7 +481,7 @@ export default function AdminScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
       <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
-        <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
+        <TouchableOpacity style={[styles.logoutBtn, { top: insets.top + 20 }]} onPress={logout}>
           <Text style={styles.logoutBtnText}>⚙ 登出</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>管理後台</Text>
@@ -812,8 +812,8 @@ export default function AdminScreen() {
 
         {users.length === 0 && !error && <Text style={styles.emptyText}>目前沒有用戶</Text>}
 
-        <TouchableOpacity style={styles.logoutBtn} onPress={() => logout()}>
-          <Text style={styles.logoutBtnText}>登出</Text>
+        <TouchableOpacity style={styles.bottomLogoutBtn} onPress={() => logout()}>
+          <Text style={styles.bottomLogoutBtnText}>登出</Text>
         </TouchableOpacity>
       </View>
 
@@ -993,12 +993,14 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
   },
   logoutBtn: {
-    alignSelf: 'flex-end',
+    position: 'absolute',
+    right: 24,
+    top: 20,
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 6,
     backgroundColor: 'rgba(255,255,255,0.08)',
-    marginBottom: 12,
+    zIndex: 1,
   },
   logoutBtnText: { color: '#a8b2d1', fontSize: 13, fontWeight: '600' },
   headerTitle: { color: colors.white, fontSize: 24, fontWeight: '700', marginBottom: 4 },
@@ -1227,7 +1229,7 @@ const styles = StyleSheet.create({
   recurringAmount: { fontSize: 13, color: colors.text, flex: 1 },
   recurringDay: { fontSize: 13, color: colors.textSecondary },
   emptyText: { fontSize: 14, color: colors.textMuted, textAlign: 'center', paddingVertical: 16 },
-  logoutBtn: {
+  bottomLogoutBtn: {
     alignSelf: 'flex-end',
     paddingVertical: 6,
     paddingHorizontal: 10,
@@ -1235,7 +1237,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.08)',
     marginTop: 16,
   },
-  logoutBtnText: { color: '#a8b2d1', fontSize: 13, fontWeight: '600' },
+  bottomLogoutBtnText: { color: '#a8b2d1', fontSize: 13, fontWeight: '600' },
 
   // Modal styles
   modalOverlay: {
