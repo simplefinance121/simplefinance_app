@@ -39,7 +39,7 @@ Live: **https://simplefinance-app.vercel.app**
 - User list with search (by name or email), sorted by assets descending
 - Edit assets, currency (USD/AUD/TWD/JPY), per-user annual interest rate inline
 - **重算利息** button — recalculates interest for all users at once
-- Add / delete transactions; assets in DB **auto-sync** after every add/delete
+- Add / delete transactions; amount validated as positive number; assets in DB **auto-sync** after every add/delete
 - **Recurring transactions** (定期入金/出金) — set a day-of-month (1–28); active rules displayed with delete buttons
 - Expandable per-user section (出/入金) with transaction summary totals (總資金/總利息/總推薦獎勵), filter tabs, paginated list (首頁/末頁), delete buttons
 - View any user's dashboard without logging in as them

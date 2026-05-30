@@ -63,6 +63,8 @@ Vercel auto-deploys on every push to `main`. Manual deploy: `cd dist && vercel d
 
 **Recurring transactions:** `AdminScreen` sends `POST /api/admin/users/:id/recurring` with `{ type, amount, dayOfMonth }`. The type is always `'deposit'` or `'withdrawal'` (the frontend `txForm.type` values `recurring_deposit`/`recurring_withdrawal` are mapped before the request). Recurring rules are fetched separately from transactions and stored in `recurringRules` state keyed by userId. Don't merge them into the `transactions` state.
 
+**Transaction amount validation:** Both `addTransaction` and `addRecurringRule` validate that the amount is a positive number (`!isNaN && > 0`) before submitting. This prevents zero, negative, or non-numeric values from reaching the backend. Don't weaken this to a simple truthy check.
+
 **iOS auto-zoom:** Input fields get font-size forced to 16px on iOS via a CSS rule injected by `scripts/postbuild-web.js`. This prevents Safari's auto-zoom on focus. Don't remove this from the post-build script.
 
 **Build number:** Managed by EAS (`appVersionSource: remote`, `autoIncrement: true`). Retained in config but not used for active distribution.

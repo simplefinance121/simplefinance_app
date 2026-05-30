@@ -167,8 +167,8 @@ export default function AdminScreen() {
   }
 
   const addRecurringRule = async (userId) => {
-    if (!txForm.amount) {
-      Toast.show({ type: 'error', text1: '請填寫金額' })
+    if (!txForm.amount || isNaN(Number(txForm.amount)) || Number(txForm.amount) <= 0) {
+      Toast.show({ type: 'error', text1: '請填寫有效的正數金額' })
       return
     }
     const day = Number(txForm.dayOfMonth)
@@ -230,8 +230,8 @@ export default function AdminScreen() {
       await addRecurringRule(userId)
       return
     }
-    if (!txForm.amount || !txForm.date) {
-      Toast.show({ type: 'error', text1: '請填寫金額和日期' })
+    if (!txForm.amount || isNaN(Number(txForm.amount)) || Number(txForm.amount) <= 0 || !txForm.date) {
+      Toast.show({ type: 'error', text1: '請填寫有效的正數金額和日期' })
       return
     }
     setTxSaving(true)

@@ -175,7 +175,7 @@ Runs after `expo export --platform web`:
 - **重算利息** button — `POST /api/admin/recalculate-all-interest`, refreshes user list on success
 - Per-user action buttons (all filled style): 編輯資產, 查看儀表板, 出/入金, 利率, 推薦制度, 刪除用戶; currency selector (USD/AUD/TWD/JPY)
 - **Expanded section (出/入金):**
-  - Add form supports 入金 / 出金 / 定期入金 / 定期出金; recurring types show day-of-month input (1–28) instead of date
+  - Add form supports 入金 / 出金 / 定期入金 / 定期出金; recurring types show day-of-month input (1–28) instead of date; amount is validated as a positive number before submission
   - Active recurring rules list with delete buttons
   - Summary totals: 總資金 / 總利息 / 總推薦獎勵
   - Filter tabs (入金/出金/利息/推薦獎勵), paginated 10/page with 首頁/末頁
