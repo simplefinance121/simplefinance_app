@@ -170,10 +170,10 @@ Runs after `expo export --platform web`:
 - Logout button (hidden in admin view)
 
 ### AdminScreen (`AdminScreen.js`)
-- **⚙ 登出** button top-right of the dark header (same style as Dashboard's profile button)
+- **⚙ 登出** button — absolutely positioned top-right of the dark header (matches Dashboard's profile button size/style); does not add an extra row above the title
 - User list: search by name/email, sorted by assets descending
 - **重算利息** button — `POST /api/admin/recalculate-all-interest`, refreshes user list on success
-- Per-user: edit assets, currency selector (USD/AUD/TWD/JPY), interest rate modal, referral modal, view dashboard, 出/入金 expand, delete user
+- Per-user action buttons (all filled style): 編輯資產, 查看儀表板, 出/入金, 利率, 推薦制度, 刪除用戶; currency selector (USD/AUD/TWD/JPY)
 - **Expanded section (出/入金):**
   - Add form supports 入金 / 出金 / 定期入金 / 定期出金; recurring types show day-of-month input (1–28) instead of date
   - Active recurring rules list with delete buttons

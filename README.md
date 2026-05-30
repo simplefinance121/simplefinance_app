@@ -43,7 +43,7 @@ Live: **https://simplefinance-app.vercel.app**
 - **Recurring transactions** (定期入金/出金) — set a day-of-month (1–28); active rules displayed with delete buttons
 - Expandable per-user section (出/入金) with transaction summary totals (總資金/總利息/總推薦獎勵), filter tabs, paginated list (首頁/末頁), delete buttons
 - View any user's dashboard without logging in as them
-- **⚙ 登出** button in the admin header
+- **⚙ 登出** button — small, top-right of the admin header (absolutely positioned, matching Dashboard's profile button style)
 - Referral modal — view referral relationships; set bonus rate per-referee individually (each referred user has their own rate)
 - Delete user — cascades to all related records
 

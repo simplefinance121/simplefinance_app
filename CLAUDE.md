@@ -55,6 +55,10 @@ Vercel auto-deploys on every push to `main`. Manual deploy: `cd dist && vercel d
 
 **PanResponder on web:** `DashboardScreen`'s chart uses `PanResponder` on native and mouse events (`onMouseMove`, `onMouseLeave`) on web. The `panResponder` object is conditionally created — `Platform.OS === 'web'` returns `{ panHandlers: {} }`. Don't collapse this back into a single `PanResponder.create()` call.
 
+**Admin header logout button:** The `⚙ 登出` button in `AdminScreen`'s header is positioned with `position: 'absolute'` + `right: 24` so it floats top-right without adding a row above the title. Its `top` is set inline to `insets.top + 20` to match the header's safe-area padding. Don't change it to a normal-flow element or it will push the title down.
+
+**Admin style key split:** `AdminScreen` has two logout buttons — a top one (`logoutBtn`) and a bottom one (`bottomLogoutBtn`). They used to share the same style key, causing the second definition to override the first in `StyleSheet.create`. They are now separate keys. Don't rename them back to the same key.
+
 **Alert on web:** `AdminScreen` uses a custom confirm `Modal` instead of `Alert.alert()` because `Alert` doesn't exist on web. Don't replace this modal with `Alert`.
 
 **Recurring transactions:** `AdminScreen` sends `POST /api/admin/users/:id/recurring` with `{ type, amount, dayOfMonth }`. The type is always `'deposit'` or `'withdrawal'` (the frontend `txForm.type` values `recurring_deposit`/`recurring_withdrawal` are mapped before the request). Recurring rules are fetched separately from transactions and stored in `recurringRules` state keyed by userId. Don't merge them into the `transactions` state.
@@ -81,3 +85,5 @@ Vercel auto-deploys on every push to `main`. Manual deploy: `cd dist && vercel d
 - Don't set `sf_install_dismissed` on successful install — only on explicit skip
 - Don't merge recurring rules into the `transactions` state — they live in `recurringRules` keyed by userId
 - Don't remove the "請使用 Safari 開啟" branch for iOS Chrome (`CriOS`) — Chrome on iOS cannot install PWAs
+- Don't change the admin header logout button from `position: 'absolute'` to normal flow — it must overlay top-right without adding a row
+- Don't rename `bottomLogoutBtn` back to `logoutBtn` — the two admin logout buttons need separate style keys
