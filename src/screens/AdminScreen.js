@@ -1228,14 +1228,15 @@ const styles = StyleSheet.create({
   recurringDay: { fontSize: 13, color: colors.textSecondary },
   emptyText: { fontSize: 14, color: colors.textMuted, textAlign: 'center', paddingVertical: 16 },
   logoutBtn: {
+    alignSelf: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 6,
     borderWidth: 1.5,
     borderColor: colors.primary,
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: 'center',
     marginTop: 16,
   },
-  logoutBtnText: { color: colors.primary, fontSize: 16, fontWeight: '600' },
+  logoutBtnText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
 
   // Modal styles
   modalOverlay: {
